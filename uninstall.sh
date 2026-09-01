@@ -4,12 +4,13 @@ set -Eeuo pipefail
 DEST="${VMT_INSTALL_DIR:-/opt/vps-toolkit}"
 STATE_DIR="${VMT_STATE_DIR:-/var/lib/vps-toolkit}"
 LOG_FILE="${VMT_LOG_FILE:-/var/log/vps-toolkit.log}"
+BIN_DIR="${VMT_BIN_DIR:-/usr/local/bin}"
 
 [ "${EUID:-$(id -u)}" -eq 0 ] || { echo "请使用 sudo vps-tool --uninstall" >&2; exit 1; }
 read -r -p "确认卸载 VPS 私人管理工具？[y/N]: " answer
 [[ "$answer" =~ ^[Yy]$ ]] || { echo "已取消"; exit 0; }
 
-for shortcut in /usr/local/bin/vps-tool /usr/local/bin/nb /usr/local/bin/n; do
+for shortcut in "$BIN_DIR/vps-tool" "$BIN_DIR/nb" "$BIN_DIR/n"; do
   if [ -L "$shortcut" ]; then
     target="$(readlink "$shortcut" 2>/dev/null || true)"
     [ "$target" = "$DEST/vps-tool.sh" ] && rm -f -- "$shortcut"

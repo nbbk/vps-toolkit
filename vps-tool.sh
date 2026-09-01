@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Euo pipefail
 
-VERSION="2.1.1"
+VERSION="2.1.2"
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 if command -v readlink >/dev/null 2>&1; then
   RESOLVED_PATH="$(readlink -f -- "$SCRIPT_PATH" 2>/dev/null || true)"
@@ -65,7 +65,7 @@ EOF
       12) ssh_security_check ;;
       13) oracle_menu ;;
       14) less "$LOG_FILE" 2>/dev/null || true ;;
-      15) bash "$BASE_DIR/update.sh" ;;
+      15) exec bash "$BASE_DIR/update.sh" ;;
       16) bash "$BASE_DIR/uninstall.sh"; exit 0 ;;
       17) system_tools_menu ;;
       18) reinstall_menu ;;

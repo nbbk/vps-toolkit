@@ -12,6 +12,6 @@ jobs:
       - name: Bash syntax
         run: bash -n ./*.sh lib/*.sh tests/*.sh
       - name: Smoke tests
-        run: bash tests/smoke.sh && bash tests/menu_contract.sh
+        run: bash tests/smoke.sh && bash tests/menu_contract.sh && sudo bash tests/update_integration.sh
       - name: ShellCheck
         run: shellcheck -x -e SC1090,SC1091,SC2015 ./*.sh lib/*.sh tests/*.sh

@@ -19,13 +19,23 @@ version_from_script() {
   sed -nE 's/^VERSION="([0-9]+\.[0-9]+\.[0-9]+)"$/\1/p' "$1" | head -n 1
 }
 
+launch_installed() {
+  [ "${VMT_NO_LAUNCH:-0}" = 1 ] && return 0
+  exec bash "$DEST/vps-tool.sh"
+}
+
 current="unknown"
 [ -f "$DEST/vps-tool.sh" ] && current="$(version_from_script "$DEST/vps-tool.sh")"
 current="${current:-unknown}"
 url="https://github.com/${REPO}/archive/refs/heads/${REF}.tar.gz"
 
 printf '正在检查更新：%s (%s)\n' "$REPO" "$REF"
-curl --fail --location --proto '=https' --tlsv1.2 "$url" -o "$TMP/source.tar.gz"
+if [ -n "${VMT_UPDATE_ARCHIVE:-}" ]; then
+  [ -f "$VMT_UPDATE_ARCHIVE" ] || { echo "测试更新包不存在" >&2; exit 1; }
+  cp "$VMT_UPDATE_ARCHIVE" "$TMP/source.tar.gz"
+else
+  curl --fail --location --proto '=https' --tlsv1.2 "$url" -o "$TMP/source.tar.gz"
+fi
 printf '下载包 SHA-256: '; sha256sum "$TMP/source.tar.gz"
 tar -xzf "$TMP/source.tar.gz" -C "$TMP"
 source_dir="$(find "$TMP" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
@@ -44,10 +54,13 @@ latest="$(version_from_script "$source_dir/vps-tool.sh")"
 printf '当前版本：%s\n远程版本：%s\n' "$current" "$latest"
 
 if [ "$current" = "$latest" ] && [ "${VMT_FORCE_UPDATE:-0}" != 1 ]; then
-  printf '已经是最新版本。\n'; exit 0
+  printf '已经是最新版本。\n'
+  printf '正在启动已安装版本 %s...\n' "$current"
+  launch_installed
+  exit 0
 fi
 
-read -r -p "确认升级到 $latest？[y/N]: " answer
+if [ "${VMT_ASSUME_YES:-0}" = 1 ]; then answer=y; else read -r -p "确认升级到 $latest？[y/N]: " answer; fi
 [[ "$answer" =~ ^[Yy]$ ]] || { echo "已取消"; exit 0; }
 
 mkdir -p "$(dirname "$BACKUP")"
@@ -72,3 +85,7 @@ fi
 
 printf '升级成功：%s -> %s\n' "$current" "$latest"
 [ -f "$BACKUP" ] && printf '旧版本备份：%s\n' "$BACKUP"
+if [ "${VMT_NO_LAUNCH:-0}" != 1 ]; then
+  printf '正在启动新版本 %s...\n' "$latest"
+  launch_installed
+fi
