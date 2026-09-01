@@ -17,6 +17,8 @@ cat >"$DEST/vps-tool.sh" <<'EOF'
 VERSION="0.0.1"
 EOF
 chmod 755 "$DEST/vps-tool.sh"
+# Simulate the n shortcut created by an older toolkit installation.
+ln -s "$DEST/vps-tool.sh" "$BIN/n"
 
 VMT_INSTALL_DIR="$DEST" VMT_STATE_DIR="$STATE" VMT_BIN_DIR="$BIN" VMT_UPDATE_ARCHIVE="$ARCHIVE" \
   VMT_ASSUME_YES=1 VMT_NO_LAUNCH=1 bash "$ROOT/update.sh"
