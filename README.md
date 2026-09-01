@@ -4,6 +4,10 @@
 
 当前版本：`1.3.1`
 
+> 📖 **完整功能说明：** [查看各模块、每个菜单功能、适用场景、风险与回滚方式](docs/FUNCTIONS.md)
+
+主菜单快速索引：系统信息、系统更新、系统清理、端口与防火墙、BBR、Swap、Docker、用户密码、SSH 端口、SSH 安全检查、甲骨文云工具、日志、在线更新和卸载。首次使用或执行 SSH、内核、DD 重装等高风险功能前，请先阅读完整说明。
+
 ## 支持范围
 
 - 系统：Debian / Ubuntu、RHEL 系（CentOS Stream、Rocky、Alma、Fedora）、Alpine
