@@ -54,7 +54,7 @@ docker_container_menu() {
 }
 docker_image_menu() {
   docker_require || return; docker images; printf '\n1 拉取镜像  2 删除镜像  3 清理悬空镜像  0 返回\n'; local c image; read -r -p "请选择: " c
-  case "$c" in 1) read -r -p "镜像（如 nginx:alpine）: " image; [[ "$image" =~ ^[A-Za-z0-9._/:@-]+$ ]] && run docker pull "$image" || die "镜像名无效";;2) read -r -p "镜像 ID/名称: " image; confirm "删除镜像 $image？" && run docker image rm "$image";;3) confirm "清理悬空镜像？" && run docker image prune;;esac
+  case "$c" in 1) read -r -p "镜像（如 nginx:alpine）: " image; if [[ "$image" =~ ^[A-Za-z0-9._/:@-]+$ ]]; then run docker pull "$image"; else die "镜像名无效"; fi;;2) read -r -p "镜像 ID/名称: " image; confirm "删除镜像 $image？" && run docker image rm "$image";;3) confirm "清理悬空镜像？" && run docker image prune;;esac
 }
 docker_network_menu() {
   docker_require || return; docker network ls; printf '\n1 创建 bridge 网络  2 删除网络  3 查看网络  0 返回\n'; local c name; read -r -p "请选择: " c; [ "$c" != 0 ] || return; read -r -p "网络名: " name; [[ "$name" =~ ^[A-Za-z0-9_.-]+$ ]] || { die "名称无效"; return; }; case "$c" in 1) run docker network create "$name";;2) confirm "删除网络 $name？" && run docker network rm "$name";;3) docker network inspect "$name";;esac
@@ -78,8 +78,9 @@ docker_daemon_show() { [ -f /etc/docker/daemon.json ] && { command -v jq >/dev/n
 docker_ipv6() { docker_require || return; if [ "$1" = on ]; then docker_daemon_merge '. + {"ipv6":true,"fixed-cidr-v6":"fd00:dead:beef::/48"}'; else docker_daemon_merge 'del(.ipv6, ."fixed-cidr-v6")'; fi; }
 
 docker_backup() {
-  docker_require || return; local dir="$STATE_DIR/docker-backup-$(date +%Y%m%d-%H%M%S)" v; mkdir -p "$dir/volumes"
-  docker ps -a --no-trunc >"$dir/containers.txt"; docker images --no-trunc >"$dir/images.txt"; docker inspect $(docker ps -aq) >"$dir/inspect.json" 2>/dev/null || printf '[]\n' >"$dir/inspect.json"
+  docker_require || return; local dir v; local -a ids; dir="$STATE_DIR/docker-backup-$(date +%Y%m%d-%H%M%S)"; mkdir -p "$dir/volumes"
+  docker ps -a --no-trunc >"$dir/containers.txt"; docker images --no-trunc >"$dir/images.txt"; mapfile -t ids < <(docker ps -aq)
+  if [ "${#ids[@]}" -gt 0 ]; then docker inspect "${ids[@]}" >"$dir/inspect.json"; else printf '[]\n' >"$dir/inspect.json"; fi
   warn "卷备份是在线文件级快照；数据库应另外执行逻辑备份。"
   if confirm "同时备份全部命名卷？可能耗时并占用较多磁盘"; then
     docker volume ls -q | while read -r v; do [ -n "$v" ] && docker run --rm -v "$v:/data:ro" -v "$dir/volumes:/backup" alpine tar -czf "/backup/${v}.tar.gz" -C /data .; done

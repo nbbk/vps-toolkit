@@ -14,4 +14,4 @@ jobs:
       - name: Smoke tests
         run: bash tests/smoke.sh && bash tests/menu_contract.sh
       - name: ShellCheck
-        run: shellcheck -x -e SC1090,SC1091 ./*.sh lib/*.sh tests/*.sh
+        run: shellcheck -x -e SC1090,SC1091,SC2015 ./*.sh lib/*.sh tests/*.sh

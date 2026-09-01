@@ -22,7 +22,7 @@ EOF
     21) os=rocky;ver=10;;22) os=rocky;ver=9;;23) os=almalinux;ver=10;;24) os=almalinux;ver=9;;
     25) os=oracle;ver=10;;26) os=oracle;ver=9;;27) os=fedora;ver=44;;28) os=fedora;ver=43;;29) os=centos;ver=10;;30) os=centos;ver=9;;
     31) os=alpine;ver="";;32) os=arch;ver="";;33) os=kali;ver="";;34) os=openeuler;ver="";;35) os=opensuse;ver="";;36) os=fnos;ver="";;
-    90) mode=dd; read -r -p "HTTPS 镜像 URL: " img; [[ "$img" =~ ^https:// ]] || { die "只允许 HTTPS URL"; return; };; *) return;;
+    90) mode='dd'; read -r -p "HTTPS 镜像 URL: " img; [[ "$img" =~ ^https:// ]] || { die "只允许 HTTPS URL"; return; };; *) return;;
   esac
   file="$(external_fetch https://raw.githubusercontent.com/bin456789/reinstall/main/reinstall.sh reinstall.sh)" || return
   sed -n '1,80p' "$file"; warn "重装将清空系统盘并断开 SSH，请先备份启动卷和业务数据。"

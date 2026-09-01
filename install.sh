@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-SRC="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SRC="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 DEST="${VMT_INSTALL_DIR:-/opt/vps-toolkit}"
 [ "${EUID:-$(id -u)}" -eq 0 ] || { echo "请使用 sudo bash install.sh" >&2; exit 1; }
 install -d -m 0755 "$DEST" "$DEST/lib"

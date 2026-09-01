@@ -11,7 +11,7 @@ ok() { say "${C_GREEN}[OK]${C_RESET} $*"; }
 warn() { say "${C_YELLOW}[提示]${C_RESET} $*"; }
 die() { say "${C_RED}[错误]${C_RESET} $*" >&2; return 1; }
 pause() { read -r -p "按回车继续..." _ || true; }
-clear_screen() { [ -t 1 ] && clear || true; }
+clear_screen() { if [ -t 1 ]; then clear; fi; }
 ui_line() { printf '%b\n' "${C_CYAN}--------------------------------------------------------${C_RESET}"; }
 ui_header() { clear_screen; ui_line; printf '%b\n' "${C_CYAN}  $*${C_RESET}"; ui_line; }
 ui_item() { printf '  %b%-3s%b %s\n' "$C_CYAN" "$1" "$C_RESET" "$2"; }

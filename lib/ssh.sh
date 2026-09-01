@@ -27,8 +27,8 @@ change_ssh_port() {
   printf '# Managed by vps-toolkit\nPort %s\n' "$new" >"$dropin"; chmod 600 "$dropin"
   if ! sshd -t; then rm -f "$dropin"; cp -a "$backup" "$config"; die "新配置校验失败，已回滚"; return; fi
   if ! service_restart ssh sshd; then rm -f "$dropin"; cp -a "$backup" "$config"; service_restart ssh sshd || true; die "SSH 重启失败，已回滚"; return; fi
-  local i listening=0
-  for i in 1 2 3 4 5; do ss -H -ltn | awk '{print $4}' | grep -Eq "(^|:)$new$" && { listening=1; break; }; sleep 1; done
+  local listening=0
+  for _ in 1 2 3 4 5; do ss -H -ltn | awk '{print $4}' | grep -Eq "(^|:)$new$" && { listening=1; break; }; sleep 1; done
   if [ "$listening" != 1 ]; then rm -f "$dropin"; cp -a "$backup" "$config"; service_restart ssh sshd || true; die "新端口未监听，已回滚"; return; fi
   ok "SSH 已监听 $new；旧端口未自动关闭。请新开终端验证登录后再手动关闭旧端口"
 }

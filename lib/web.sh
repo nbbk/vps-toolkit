@@ -67,7 +67,7 @@ EOF
 }
 
 web_app_compose() {
-  local name="$1" content="$2" dir="$WEB_ROOT/apps/$name"; mkdir -p "$dir"; [ ! -f "$dir/compose.yml" ] || { die "应用已存在：$name"; return; }; printf '%s\n' "$content" >"$dir/compose.yml"; chmod 600 "$dir/compose.yml"; (cd "$dir" && run docker compose up -d)
+  local name="$1" content="$2" dir; dir="$WEB_ROOT/apps/$name"; mkdir -p "$dir"; [ ! -f "$dir/compose.yml" ] || { die "应用已存在：$name"; return; }; printf '%s\n' "$content" >"$dir/compose.yml"; chmod 600 "$dir/compose.yml"; (cd "$dir" && run docker compose up -d)
 }
 
 web_install_wordpress() { web_prepare || return; local name pass root; read -r -p "站点标识 [wordpress]: " name; name="${name:-wordpress}"; web_valid_name "$name" || { die "标识无效"; return; }; pass="$(web_random_password)"; root="$(web_random_password)"; web_app_compose "$name" "services:
@@ -97,7 +97,7 @@ services:
 EOF
   (cd "$dir" && run docker compose up -d); ok "反向代理已启动，监听端口：$port"; }
 web_status() { docker_require || return; docker ps -a --format 'table {{.Names}}\t{{.Image}}\t{{.Ports}}\t{{.Status}}'; printf '\n站点目录：\n'; find "$WEB_ROOT" -mindepth 1 -maxdepth 3 -name compose.yml -print 2>/dev/null || true; }
-web_backup() { [ -d "$WEB_ROOT" ] || { die "没有站点数据"; return; }; local out="$STATE_DIR/web-backup-$(date +%Y%m%d-%H%M%S).tar.gz"; run tar -czf "$out" -C "$(dirname "$WEB_ROOT")" "$(basename "$WEB_ROOT")"; ok "文件备份完成：$out。数据库仍建议另做逻辑导出。"; }
+web_backup() { [ -d "$WEB_ROOT" ] || { die "没有站点数据"; return; }; local out; out="$STATE_DIR/web-backup-$(date +%Y%m%d-%H%M%S).tar.gz"; run tar -czf "$out" -C "$(dirname "$WEB_ROOT")" "$(basename "$WEB_ROOT")"; ok "文件备份完成：$out。数据库仍建议另做逻辑导出。"; }
 web_restore() { local file; read -r -p "备份文件绝对路径: " file; [ -f "$file" ] || { die "文件不存在"; return; }; confirm "恢复文件到 $(dirname "$WEB_ROOT")？" && run tar -xzf "$file" -C "$(dirname "$WEB_ROOT")"; }
 web_update() { docker_require || return; find "$WEB_ROOT" -name compose.yml -print0 2>/dev/null | while IFS= read -r -d '' f; do (cd "$(dirname "$f")" && docker compose pull && docker compose up -d); done; }
 web_optimize() { warn "通用优化会启用 Docker 日志轮转；数据库参数应按内存单独规划。"; docker_daemon_logging; }

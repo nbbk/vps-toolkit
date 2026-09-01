@@ -8,11 +8,12 @@ firewall_backend() {
 }
 
 parse_port_spec() {
-  local spec="$1" proto="$2"
+  local spec="$1" proto="$2" start end
   [[ "$proto" = tcp || "$proto" = udp ]] || return 1
   if [[ "$spec" =~ ^([0-9]+)(:([0-9]+))?$ ]]; then
-    valid_port "${BASH_REMATCH[1]}" || return 1
-    [ -z "${BASH_REMATCH[3]:-}" ] || { valid_port "${BASH_REMATCH[3]}" && [ "${BASH_REMATCH[1]}" -le "${BASH_REMATCH[3]}" ]; }
+    start="${BASH_REMATCH[1]}"; end="${BASH_REMATCH[3]:-}"
+    valid_port "$start" || return 1
+    [ -z "$end" ] || { valid_port "$end" && [ "$start" -le "$end" ]; }
   else return 1; fi
 }
 
