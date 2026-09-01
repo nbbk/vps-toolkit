@@ -9,6 +9,7 @@ required_functions=(
   system_info system_update system_clean firewall_open_ui firewall_close_ui firewall_open_all firewall_restore_default
   bbr_menu swap_ui docker_menu change_password change_ssh_port_ui ssh_security_check oracle_menu
   system_tools_menu reinstall_menu testsuite_menu web_menu basics_menu workspace_menu
+  ip_family_menu ip_family_prefer ip_family_only4 ip_family_only6 ip_family_dual
 )
 for fn in "${required_functions[@]}"; do declare -F "$fn" >/dev/null || { echo "missing function: $fn" >&2; exit 1; }; done
 

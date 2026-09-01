@@ -1,6 +1,6 @@
 # VPS 私人管理工具完整功能说明
 
-本文对应 `vps-toolkit 2.0.1`。所有菜单操作都需要 root 权限；推荐使用 `sudo nb` 进入。确认提示统一为 `[y/N]`：输入 `y` 或 `Y` 执行，输入 `n` 或直接回车取消。所有二级菜单执行功能后会留在当前菜单，只有选择 `0` 才返回主菜单。
+本文对应 `vps-toolkit 2.1.0`。所有菜单操作都需要 root 权限；推荐使用 `sudo nb` 进入。确认提示统一为 `[y/N]`：输入 `y` 或 `Y` 执行，输入 `n` 或直接回车取消。所有二级菜单执行功能后会留在当前菜单，只有选择 `0` 才返回主菜单。
 
 ## 一、安装、启动与文件位置
 
@@ -350,6 +350,18 @@ net.ipv4.tcp_congestion_control=bbr
 主菜单第 18 项使用公开上游 `bin456789/reinstall`，覆盖 Debian、Ubuntu、Rocky、AlmaLinux、Oracle Linux、Fedora、CentOS、Alpine、Arch、Kali、openEuler、openSUSE 和 fnOS，并支持自定义 HTTPS DD 镜像。
 
 执行前显示上游来源、SHA-256 和脚本内容预览。重装会清空系统盘并断开 SSH，必须先备份启动卷和业务数据。Windows 镜像版本、驱动和授权差异较大，本工具不硬编码未知镜像；需要 Windows 时可在自定义 DD 中使用自己核验过的合法镜像。
+
+### IPv4 / IPv6 模式
+
+位于“系统工具箱 → 24”：
+
+- IPv4 优先：保留双栈，在 `/etc/gai.conf` 的独立标记区块提高 IPv4-mapped 地址优先级；
+- IPv6 优先：保留双栈，提高原生 IPv6 地址优先级；
+- 仅 IPv4：通过 `/etc/sysctl.d/99-vps-toolkit-ipv4-only.conf` 持久关闭 IPv6；
+- 仅 IPv6：使用独立 nftables 表阻断非 loopback IPv4 入站和出站，并在 systemd 系统创建开机服务；
+- 恢复双栈：删除本工具的 sysctl、nftables、systemd 和 gai.conf 配置，然后重新加载系统参数。
+
+仅 IPv6 是高风险模式。工具会确认存在全局 IPv6 地址、IPv6 默认路由、真实 IPv6 连通性，并检查当前 SSH 客户端地址；当前会话通过 IPv4 建立时会拒绝切换。建议仍通过云串口执行，并确保 DNS、软件源和业务上游均支持 IPv6。
 
 ## 十三、测试脚本合集
 
