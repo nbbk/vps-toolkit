@@ -5,6 +5,15 @@ export VMT_BASE_DIR="$ROOT" VMT_STATE_DIR=/tmp/vmt-contract-state VMT_BACKUP_DIR
 export PKG_FAMILY=apt OS_PRETTY="Test Linux"
 for module in core system firewall ssh docker oracle tools reinstall testsuite web basics workspace; do source "$ROOT/lib/$module.sh"; done
 
+[[ "$C_CYAN" == $'\033[36m' ]] || { echo "color escape is not an ANSI byte" >&2; exit 1; }
+if [ -r /etc/os-release ]; then
+  VERSION="toolkit-test"
+  detect_os
+  [ "$VERSION" = "toolkit-test" ] || { echo "/etc/os-release overwrote toolkit VERSION" >&2; exit 1; }
+fi
+grep -q 'v${TOOL_VERSION}' "$ROOT/vps-tool.sh" || { echo "menu header does not use TOOL_VERSION" >&2; exit 1; }
+grep -q 'systemctl restart ssh.socket' "$ROOT/lib/ssh.sh" || { echo "missing SSH socket activation support" >&2; exit 1; }
+
 required_functions=(
   system_info system_update system_clean firewall_open_ui firewall_close_ui firewall_open_all firewall_restore_default
   bbr_menu swap_ui docker_menu change_password change_ssh_port_ui ssh_security_check oracle_menu oracle_r_tanzhang oracle_oci_helper

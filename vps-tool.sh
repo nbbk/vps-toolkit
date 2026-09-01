@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -Euo pipefail
 
-VERSION="2.1.3"
+VERSION="2.1.4"
+TOOL_VERSION="$VERSION"
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 if command -v readlink >/dev/null 2>&1; then
   RESOLVED_PATH="$(readlink -f -- "$SCRIPT_PATH" 2>/dev/null || true)"
@@ -30,7 +31,7 @@ main_menu() {
   while true; do
     clear_screen
     cat <<EOF
-${C_CYAN}VPS 私人管理工具 v${VERSION}${C_RESET}  ${OS_PRETTY:-unknown}
+${C_CYAN}VPS 私人管理工具 v${TOOL_VERSION}${C_RESET}  ${OS_PRETTY:-unknown}
 安全默认：无遥测｜不保存密码｜高风险操作先备份/校验
 --------------------------------------------------------
  1. 系统信息              2. 系统更新

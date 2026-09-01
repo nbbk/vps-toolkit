@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-C_RED='\033[31m'; C_GREEN='\033[32m'; C_YELLOW='\033[33m'; C_CYAN='\033[36m'; C_RESET='\033[0m'
+C_RED=$'\033[31m'; C_GREEN=$'\033[32m'; C_YELLOW=$'\033[33m'; C_CYAN=$'\033[36m'; C_RESET=$'\033[0m'
 STATE_DIR="${VMT_STATE_DIR:-/var/lib/vps-toolkit}"
 BACKUP_DIR="${VMT_BACKUP_DIR:-$STATE_DIR/backups}"
 LOG_FILE="${VMT_LOG_FILE:-/var/log/vps-toolkit.log}"
@@ -46,7 +46,14 @@ valid_port() { [[ "${1:-}" =~ ^[0-9]+$ ]] && [ "$1" -ge 1 ] && [ "$1" -le 65535 
 valid_size_mb() { [[ "${1:-}" =~ ^[0-9]+$ ]] && [ "$1" -ge 128 ] && [ "$1" -le 262144 ]; }
 
 detect_os() {
-  [ -r /etc/os-release ] || die "无法识别系统"
+  # /etc/os-release may define VERSION. Keep all standard fields local so it
+  # cannot overwrite the toolkit version or other global configuration.
+  # shellcheck disable=SC2034
+  local NAME="" VERSION="" ID="" ID_LIKE="" PRETTY_NAME="" VERSION_ID="" \
+    HOME_URL="" SUPPORT_URL="" BUG_REPORT_URL="" PRIVACY_POLICY_URL="" \
+    VERSION_CODENAME="" UBUNTU_CODENAME="" LOGO="" ANSI_COLOR="" \
+    CPE_NAME="" BUILD_ID="" VARIANT="" VARIANT_ID=""
+  [ -r /etc/os-release ] || { die "无法识别系统"; return 1; }
   # shellcheck disable=SC1091
   source /etc/os-release
   OS_ID="${ID,,}"; OS_LIKE="${ID_LIKE:-}"; OS_PRETTY="${PRETTY_NAME:-$OS_ID}"
