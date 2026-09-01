@@ -24,6 +24,13 @@ launch_installed() {
   exec bash "$DEST/vps-tool.sh"
 }
 
+wait_before_launch() {
+  if [ -t 0 ] && [ -t 1 ] && [ "${VMT_NO_LAUNCH:-0}" != 1 ]; then
+    printf '\n'
+    read -r -p "按回车进入新版本..." _update_continue || true
+  fi
+}
+
 current="unknown"
 [ -f "$DEST/vps-tool.sh" ] && current="$(version_from_script "$DEST/vps-tool.sh")"
 current="${current:-unknown}"
@@ -55,7 +62,8 @@ printf '当前版本：%s\n远程版本：%s\n' "$current" "$latest"
 
 if [ "$current" = "$latest" ] && [ "${VMT_FORCE_UPDATE:-0}" != 1 ]; then
   printf '已经是最新版本。\n'
-  printf '正在启动已安装版本 %s...\n' "$current"
+  printf '已安装版本：%s\n' "$current"
+  wait_before_launch
   launch_installed
   exit 0
 fi
@@ -83,9 +91,15 @@ if [ "$installed" != "$latest" ] || ! bash -n "$DEST/vps-tool.sh"; then
   exit 1
 fi
 
-printf '升级成功：%s -> %s\n' "$current" "$latest"
-[ -f "$BACKUP" ] && printf '旧版本备份：%s\n' "$BACKUP"
+printf '\n--------------------------------------------------------\n'
+printf '更新完成\n'
+printf '旧版本：%s\n' "$current"
+printf '新版本：%s\n' "$installed"
+[ -f "$BACKUP" ] && printf '备份位置：%s\n' "$BACKUP"
+printf '安装目录：%s\n' "$DEST"
+printf '验证结果：版本号和脚本语法检查通过\n'
+printf '%s\n' '--------------------------------------------------------'
 if [ "${VMT_NO_LAUNCH:-0}" != 1 ]; then
-  printf '正在启动新版本 %s...\n' "$latest"
+  wait_before_launch
   launch_installed
 fi
