@@ -56,7 +56,8 @@ firewall_open_all() {
     ufw) run ufw default allow incoming; run ufw --force enable ;;
     firewalld) run firewall-cmd --permanent --add-port=1-65535/tcp; run firewall-cmd --permanent --add-port=1-65535/udp; run firewall-cmd --reload ;;
     nft)
-      local backup="$BACKUP_DIR/nftables-before-open-all-$(date +%Y%m%d-%H%M%S).nft"
+      local backup
+      backup="$BACKUP_DIR/nftables-before-open-all-$(date +%Y%m%d-%H%M%S).nft"
       nft list ruleset >"$backup" || { die "无法备份 nftables 规则"; return; }
       run nft flush ruleset || { die "清空 nftables 规则失败"; return; }
       printf '%s\n' "$backup" >"$STATE_DIR/nftables-last-backup"
