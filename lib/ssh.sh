@@ -19,7 +19,7 @@ change_ssh_port() {
   sshd -t || { die "当前 SSH 配置已有语法错误"; return; }
   ss -H -ltn 2>/dev/null | awk '{print $4}' | grep -Eq "(^|:)$new$" && { die "端口 $new 已被占用"; return; }
   old_ports="$(current_ssh_ports | paste -sd, -)"
-  confirm_phrase "CHANGE-$new" "将先开放 $new/tcp，再修改 SSH；旧端口 $old_ports 暂不关闭" || return 0
+  confirm "将先开放 $new/tcp，再修改 SSH；旧端口 $old_ports 暂不关闭，继续？" || return 0
   firewall_apply open "$new" tcp
   backup="$BACKUP_DIR/sshd_config.$(date +%Y%m%d-%H%M%S).bak"; cp -a "$config" "$backup"
   mkdir -p /etc/ssh/sshd_config.d

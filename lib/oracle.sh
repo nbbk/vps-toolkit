@@ -58,13 +58,13 @@ EOF
   file="$(external_fetch https://raw.githubusercontent.com/bin456789/reinstall/main/reinstall.sh reinstall.sh)" || return
   sed -n '1,100p' "$file"
   warn "执行后将清空系统盘并导致当前 SSH 断开。请先制作 OCI 启动卷备份，并确认串口控制台可用。"
-  confirm_phrase "ERASE-${os}-${ver}" "确认立即重装为 $os $ver" || return 0
+  confirm "确认立即重装为 $os $ver？" || return 0
   chmod 700 "$file"; log WARN "执行 DD 重装：$os $ver"; bash "$file" "$os" "$ver"
 }
 
 oracle_r_helper() {
   local file; file="$(external_fetch https://github.com/Yohann0617/oci-helper/releases/latest/download/sh_oci-helper_install.sh oci-helper-install.sh)" || return
-  sed -n '1,120p' "$file"; confirm_phrase RUN-R-HELPER "确认执行 Yohann0617/oci-helper 安装器" || return 0
+  sed -n '1,120p' "$file"; confirm "确认执行 Yohann0617/oci-helper 安装器？" || return 0
   chmod 700 "$file"; bash "$file"
 }
 
@@ -74,7 +74,7 @@ oracle_root_login_enable() {
   command -v sshd >/dev/null 2>&1 || { die "未安装 OpenSSH Server"; return; }
   sshd -t || { die "当前 sshd 配置已有错误"; return; }
   warn "Root 密码登录会显著增加暴力破解风险。建议限制 OCI 安全列表来源 IP 并启用 Fail2Ban。"
-  confirm_phrase ENABLE-ROOT-PASSWORD "确认开启 Root 密码 SSH 登录" || return 0
+  confirm "确认开启 Root 密码 SSH 登录？" || return 0
   mkdir -p "$BACKUP_DIR" /etc/ssh/sshd_config.d
   [ -f "$oracle_sshd_dropin" ] && cp -a "$oracle_sshd_dropin" "$BACKUP_DIR/root-login.$(date +%s).bak" || true
   warn "现在设置 root 密码；密码由 passwd 直接读取，本工具不会记录"; passwd root || return
@@ -130,7 +130,7 @@ EOF
 
 oracle_jhb_ipv6() {
   local file; file="$(external_fetch https://jhb.ovh/jb/v6.sh jhb-ipv6.sh)" || return
-  sed -n '1,120p' "$file"; confirm_phrase RUN-JHB-IPV6 "确认执行参考项目使用的 JHB IPv6 第三方脚本" || return 0
+  sed -n '1,120p' "$file"; confirm "确认执行参考项目使用的 JHB IPv6 第三方脚本？" || return 0
   chmod 700 "$file"; bash "$file"
 }
 

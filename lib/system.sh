@@ -115,7 +115,7 @@ xanmod_install() {
   local action="$1" verb pkg; xanmod_supported || return
   [ "$action" != update ] || xanmod_installed || { die "尚未安装 XanMod"; return; }
   [ "$action" = install ] && verb=安装 || verb=更新
-  confirm_phrase XANMOD "将${verb}第三方 XanMod 内核；可能导致无法启动，请先做云盘快照" || return 0
+  confirm "将${verb}第三方 XanMod 内核；可能导致无法启动，请先做云盘快照。继续？" || return 0
   xanmod_add_repo || return; pkg="$(xanmod_package)" || { die "未找到适配 CPU 的 XanMod 软件包"; return; }
   if [ "$action" = update ]; then run apt-get install -y --only-upgrade "$pkg" || run apt-get install -y "$pkg"; else run apt-get install -y "$pkg"; fi
   bbr_enable; ok "XanMod 处理完成：$pkg。请确认控制台救援可用后手动重启"
@@ -124,7 +124,7 @@ xanmod_install() {
 xanmod_uninstall() {
   xanmod_installed || { warn "未安装 XanMod"; return; }
   printf '当前运行内核：%s\n' "$(uname -r)"; dpkg-query -W -f='${Package} ${Version}\n' 'linux-*xanmod*' 2>/dev/null || true
-  confirm_phrase REMOVE-XANMOD "将卸载 XanMod；必须确保发行版原生内核仍存在" || return 0
+  confirm "将卸载 XanMod；必须确保发行版原生内核仍存在。继续？" || return 0
   dpkg-query -W -f='${Package}\n' 'linux-image-*' 2>/dev/null | grep -qv xanmod || { die "未检测到备用原生内核，拒绝卸载"; return; }
   run apt-get purge -y 'linux-*xanmod*'; run apt-get autoremove -y; command -v update-grub >/dev/null && run update-grub || true
   rm -f /etc/apt/sources.list.d/xanmod-release.list /usr/share/keyrings/xanmod-archive-keyring.gpg; ok "XanMod 已卸载；请手动重启"

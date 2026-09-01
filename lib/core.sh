@@ -34,11 +34,6 @@ confirm() {
   read -r -p "$prompt [y/N]: " answer
   [[ "$answer" =~ ^[Yy]$ ]]
 }
-confirm_phrase() {
-  local phrase="$1" prompt="$2" answer
-  read -r -p "$prompt（输入 $phrase 确认）: " answer
-  [ "$answer" = "$phrase" ]
-}
 valid_port() { [[ "${1:-}" =~ ^[0-9]+$ ]] && [ "$1" -ge 1 ] && [ "$1" -le 65535 ]; }
 valid_size_mb() { [[ "${1:-}" =~ ^[0-9]+$ ]] && [ "$1" -ge 128 ] && [ "$1" -le 262144 ]; }
 

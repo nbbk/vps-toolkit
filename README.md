@@ -2,7 +2,7 @@
 
 一个面向自用 VPS 的交互式 Bash 工具，参考了 `kejilion/sh` 的功能分类，但重新实现为小型模块化代码。脚本不含遥测、不保存密码，也不默认执行网上下载的脚本。
 
-当前版本：`1.3.0`
+当前版本：`1.3.1`
 
 ## 支持范围
 
@@ -54,7 +54,7 @@ sudo vps-tool --uninstall
 sudo nb --update
 ```
 
-升级器会从 `nbbk/vps-toolkit` 下载最新源码，显示下载包 SHA-256，检查必需文件并对全部 Shell 脚本运行语法检查。确认后会备份当前安装再覆盖升级；安装或验证失败时自动恢复旧版本。旧版本备份保存在 `/var/lib/vps-toolkit/update-backups/`。
+升级器会从 `nbbk/vps-toolkit` 下载最新源码，显示下载包 SHA-256，检查必需文件并对全部 Shell 脚本运行语法检查。输入 `y` 确认后会备份当前安装再覆盖升级；安装或验证失败时自动恢复旧版本。旧版本备份保存在 `/var/lib/vps-toolkit/update-backups/`。
 
 默认保留备份及日志；可在卸载过程中选择一并删除。卸载程序不会擅自撤销防火墙、SSH、Swap、BBR、Docker 或系统软件包修改，避免造成失联或业务中断。
 
@@ -68,8 +68,8 @@ sudo bash vps-tool.sh
 
 - SSH 换端口会先开放新端口、备份配置、运行 `sshd -t`、重启并确认监听；不会自动关闭旧端口。请保持当前会话，另开终端验证后再关闭旧端口。
 - 修改密码直接调用系统 `passwd`，脚本不接触明文密码。
-- 原生 BBR 不替换内核；XanMod BBRv3 仅在官方支持的 x86_64 Debian/Ubuntu 版本开放，安装、更新和卸载均要求专用确认口令，不会自动重启。
-- DD 重装、R 探长和 JHB IPv6 脚本会先下载到 `/var/lib/vps-toolkit/external`，显示来源、SHA-256 与脚本开头，再要求专用确认口令才执行。
+- 原生 BBR 不替换内核；XanMod BBRv3 仅在官方支持的 x86_64 Debian/Ubuntu 版本开放，安装、更新和卸载均要求 `y/N` 确认，不会自动重启。
+- DD 重装、R 探长和 JHB IPv6 脚本会先下载到 `/var/lib/vps-toolkit/external`，显示来源、SHA-256 与脚本开头，再要求 `y/N` 确认才执行。
 - 甲骨文云 Root 密码登录会设置 root 密码、写入独立 SSH 配置，并通过 `sshd -t` 和有效配置回读验证；关闭密码登录前必须存在 root 公钥。
 - 日志保存在 `/var/log/vps-toolkit.log`，权限为 `0600`，不记录密码。
 - 操作前仍应制作云盘快照，并确保云厂商控制台/串口救援可用。

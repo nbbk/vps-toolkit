@@ -6,8 +6,8 @@ STATE_DIR="${VMT_STATE_DIR:-/var/lib/vps-toolkit}"
 LOG_FILE="${VMT_LOG_FILE:-/var/log/vps-toolkit.log}"
 
 [ "${EUID:-$(id -u)}" -eq 0 ] || { echo "请使用 sudo vps-tool --uninstall" >&2; exit 1; }
-read -r -p "确认卸载 VPS 私人管理工具？输入 UNINSTALL 继续: " answer
-[ "$answer" = UNINSTALL ] || { echo "已取消"; exit 0; }
+read -r -p "确认卸载 VPS 私人管理工具？[y/N]: " answer
+[[ "$answer" =~ ^[Yy]$ ]] || { echo "已取消"; exit 0; }
 
 for shortcut in /usr/local/bin/vps-tool /usr/local/bin/nb /usr/local/bin/n; do
   if [ -L "$shortcut" ]; then

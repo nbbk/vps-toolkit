@@ -47,8 +47,8 @@ if [ "$current" = "$latest" ] && [ "${VMT_FORCE_UPDATE:-0}" != 1 ]; then
   printf '已经是最新版本。\n'; exit 0
 fi
 
-read -r -p "确认升级到 $latest？输入 UPDATE 继续: " answer
-[ "$answer" = UPDATE ] || { echo "已取消"; exit 0; }
+read -r -p "确认升级到 $latest？[y/N]: " answer
+[[ "$answer" =~ ^[Yy]$ ]] || { echo "已取消"; exit 0; }
 
 mkdir -p "$(dirname "$BACKUP")"
 if [ -d "$DEST" ]; then tar -czf "$BACKUP" -C "$(dirname "$DEST")" "$(basename "$DEST")"; fi

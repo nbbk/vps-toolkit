@@ -19,7 +19,7 @@ docker_menu() {
     1) docker_install ;;
     2) docker_require && docker ps -a ;;
     3|4|5|6|7) docker_container_action "$c" ;;
-    8) docker_require && confirm_phrase PRUNE "将删除未使用的容器、网络和悬空镜像" && run docker system prune ;;
+    8) docker_require && confirm "将删除未使用的容器、网络和悬空镜像，继续？" && run docker system prune ;;
     9) docker_require && docker info ;;
   esac
 }
@@ -36,6 +36,6 @@ docker_container_action() {
   case "$1" in
     3) run docker start "$name";; 4) run docker stop "$name";; 5) run docker restart "$name";;
     6) docker logs --tail 200 -f "$name";;
-    7) confirm_phrase "DELETE-$name" "确认删除容器 $name" && run docker rm "$name";;
+    7) confirm "确认删除容器 $name？" && run docker rm "$name";;
   esac
 }
