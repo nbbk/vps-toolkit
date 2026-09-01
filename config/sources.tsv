@@ -1,0 +1,22 @@
+# id	url	version_or_ref	policy	sha256	filename
+reinstall	https://raw.githubusercontent.com/bin456789/reinstall/6b3a341b4bb5c0b93f25cc0a0518e9bd5088504b/reinstall.sh	6b3a341	pinned-sha256	fe8cf9d8fb800aa74480bbd2223f268259e2a6eadfeab68c50a39b57f027139f	reinstall.sh
+r-tanzhang	https://github.com/semicons/java_oci_manage/releases/download/v10.5.1/sh_client_bot.sh	v10.5.1	pinned-sha256	8c7d9c84f4930d94257e1c296f64ddd381dd44531bd7fa737efff0bbcd5038be	r-tanzhang-client.sh
+oci-helper	https://github.com/Yohann0617/oci-helper/releases/download/v3.5.1/sh_oci-helper_install.sh	v3.5.1	pinned-sha256	a8ab84ba39fa85de896bc5434cceea1a868431c00981878469aca2bb8f3226b0	oci-helper-install.sh
+jhb-ipv6	https://jhb.ovh/jb/v6.sh	upstream-current	review-each-download	-	jhb-ipv6.sh
+bt-panel	https://download.bt.cn/install/install_panel.sh	upstream-current	review-each-download	-	bt-panel.sh
+aapanel	https://www.aapanel.com/script/install_7.0_en.sh	7.0	review-each-download	-	aapanel.sh
+test-chatgpt	https://cdn.jsdelivr.net/gh/missuo/OpenAI-Checker/openai.sh	upstream-current	review-each-download	-	test-chatgpt.sh
+test-region	https://check.unlock.media	upstream-current	review-each-download	-	test-region.sh
+test-media	https://github.com/yeahwu/check/raw/main/check.sh	main	review-each-download	-	test-media.sh
+test-besttrace	https://git.io/besttrace	upstream-current	review-each-download	-	test-besttrace.sh
+test-mtr	https://raw.githubusercontent.com/zhucaidan/mtr_trace/main/mtr_trace.sh	main	review-each-download	-	test-mtr.sh
+test-superspeed	https://git.io/superspeed_uxh	upstream-current	review-each-download	-	test-superspeed.sh
+test-nexttrace	https://nxtrace.org/nt	upstream-current	review-each-download	-	test-nexttrace.sh
+test-backtrace	https://raw.githubusercontent.com/ludashi2020/backtrace/main/install.sh	main	review-each-download	-	test-backtrace.sh
+test-netquality	https://Net.Check.Place	upstream-current	review-each-download	-	test-netquality.sh
+test-tcpquality	https://raw.githubusercontent.com/ibsgss/TcpQuality/main/runTcpQuality.sh	main	review-each-download	-	test-tcpquality.sh
+test-yabs	https://yabs.sh	upstream-current	review-each-download	-	test-yabs.sh
+test-gb5	https://raw.githubusercontent.com/i-abc/GB5/main/gb5-test.sh	main	review-each-download	-	test-gb5.sh
+test-bench	https://bench.sh	upstream-current	review-each-download	-	test-bench.sh
+test-ecs	https://github.com/spiritLHLS/ecs/raw/main/ecs.sh	main	review-each-download	-	test-ecs.sh
+test-nodequality	https://run.NodeQuality.com	upstream-current	review-each-download	-	test-nodequality.sh

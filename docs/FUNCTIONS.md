@@ -1,6 +1,26 @@
 # VPS 私人管理工具完整功能说明
 
-本文对应 `vps-toolkit 2.1.4`。所有菜单操作都需要 root 权限；推荐使用 `sudo nb` 进入。确认提示统一为 `[y/N]`：输入 `y` 或 `Y` 执行，输入 `n` 或直接回车取消。所有二级菜单执行功能后会留在当前菜单，只有选择 `0` 才返回主菜单。
+本文对应 `vps-toolkit 2.2.0`。所有会修改系统的操作都需要 root 权限；推荐使用 `sudo nb` 进入。确认提示统一为 `[y/N]`：输入 `y` 或 `Y` 执行，输入 `n` 或直接回车取消。所有二级菜单执行功能后会留在当前菜单，只有选择 `0` 才返回主菜单。
+
+## 2.2.0 管理架构
+
+核心管理保留系统、网络、防火墙、BBR、Swap、Docker、SSH、基础工具、后台工作区、备份、诊断和安全体检。会下载外部可执行内容的甲骨文云、测试、建站面板与重装系统统一放入“扩展中心”，避免把第三方行为与核心功能混在一起。
+
+高风险配置修改统一显示修改对象和回滚方式；支持的配置会进入 `/var/lib/vps-toolkit/managed-backups`，事务记录位于 `/var/lib/vps-toolkit/transactions`。备份元数据包含原路径、模块、时间和工具版本，恢复前校验 SHA-256，并再次备份当前文件。
+
+### 非交互命令
+
+`nb --help` 显示完整命令。常用入口包括 `nb info`、`nb doctor`、`nb security`、`nb report`、`nb firewall status/open/close`、`nb ssh status/port`、`nb swap set`、`nb bbr status/enable`、`nb docker status`、`nb backup list/restore/export` 和 `nb update stable/testing`。修改类命令不会绕过安全确认。
+
+### 兼容性诊断与安全体检
+
+兼容性诊断识别操作系统、架构、内核、包管理器、systemd/OpenRC、虚拟化、云平台、防火墙后端、SSH service/socket、网络连通性、Docker、拥塞控制及队列算法，并对主要功能显示可用/不可用。安全体检只读检查防火墙、SSH Root/密码登录、空密码账户、Fail2Ban、数据库公网监听、待更新软件、磁盘、inode、NTP 和失败登录。
+
+诊断报告保存到 `/var/lib/vps-toolkit/reports`，权限为 `0600`，包含系统资源、监听端口、失败服务和工具错误摘要，不包含密码、Token、SSH 私钥内容。
+
+### 第三方来源与更新通道
+
+`config/sources.tsv` 是唯一的第三方可执行来源登记表。重装脚本、R 探长和 OCI Helper 使用固定提交/Release 与 SHA-256；动态脚本标记为每次审阅。稳定更新通道读取 GitHub 最新 Release，测试通道读取 `main`。正式版本变化记录在 `CHANGELOG.md`。
 
 ## 一、安装、启动与文件位置
 
@@ -356,7 +376,7 @@ Ubuntu 22.10 及更新版本可能由 systemd 的 `ssh.socket` 而不是 `sshd_c
 
 ## 十二、重装系统
 
-主菜单第 18 项使用公开上游 `bin456789/reinstall`，覆盖 Debian、Ubuntu、Rocky、AlmaLinux、Oracle Linux、Fedora、CentOS、Alpine、Arch、Kali、openEuler、openSUSE 和 fnOS，并支持自定义 HTTPS DD 镜像。
+扩展中心的“重装系统”使用登记并固定版本的 `bin456789/reinstall`，覆盖 Debian、Ubuntu、Rocky、AlmaLinux、Oracle Linux、Fedora、CentOS、Alpine、Arch、Kali、openEuler、openSUSE 和 fnOS，并支持自定义 HTTPS DD 镜像。
 
 执行前显示上游来源、SHA-256 和脚本内容预览。重装会清空系统盘并断开 SSH，必须先备份启动卷和业务数据。Windows 镜像版本、驱动和授权差异较大，本工具不硬编码未知镜像；需要 Windows 时可在自定义 DD 中使用自己核验过的合法镜像。
 

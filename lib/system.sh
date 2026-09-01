@@ -45,6 +45,7 @@ bbr_enable() {
   modprobe tcp_bbr 2>/dev/null || true
   sysctl -n net.ipv4.tcp_available_congestion_control 2>/dev/null | grep -qw bbr || { die "当前内核不支持 BBR；本工具不会替换第三方内核"; return; }
   local file=/etc/sysctl.d/99-vps-toolkit-bbr.conf tmp
+  managed_backup_file bbr "$file" >/dev/null || true
   tmp="$(mktemp)"; printf 'net.core.default_qdisc=fq\nnet.ipv4.tcp_congestion_control=bbr\n' >"$tmp"
   run install -m 0644 "$tmp" "$file"; rm -f "$tmp"; run sysctl --system
   [ "$(sysctl -n net.ipv4.tcp_congestion_control)" = bbr ] && ok "BBR 已启用" || die "BBR 未能生效"
@@ -84,8 +85,8 @@ EOF
 xanmod_supported() {
   [ "$(uname -m)" = x86_64 ] || { die "XanMod BBRv3 受控安装仅支持 x86_64"; return 1; }
   [ "$PKG_FAMILY" = apt ] || { die "仅支持 Debian/Ubuntu 的 APT 系统"; return 1; }
-  case "${VERSION_CODENAME:-}" in bookworm|trixie|forky|sid|noble|plucky|questing|resolute) return 0;; esac
-  die "XanMod 官方源不支持当前发行版代号：${VERSION_CODENAME:-unknown}"; return 1
+  case "${OS_CODENAME:-}" in bookworm|trixie|forky|sid|noble|plucky|questing|resolute) return 0;; esac
+  die "XanMod 官方源不支持当前发行版代号：${OS_CODENAME:-unknown}"; return 1
 }
 
 xanmod_installed() { dpkg-query -W -f='${Package}\n' 'linux-*xanmod*' 2>/dev/null | grep -q '^linux-.*xanmod'; }
@@ -102,7 +103,7 @@ xanmod_add_repo() {
   local key=/usr/share/keyrings/xanmod-archive-keyring.gpg list=/etc/apt/sources.list.d/xanmod-release.list tmp
   tmp="$(mktemp)"; run curl --fail --location --proto '=https' --tlsv1.2 https://dl.xanmod.org/archive.key -o "$tmp"
   gpg --batch --yes --dearmor -o "$key" "$tmp"; rm -f "$tmp"; chmod 644 "$key"
-  printf 'deb [signed-by=%s] https://deb.xanmod.org %s main\n' "$key" "$VERSION_CODENAME" >"$list"; run apt-get update
+  printf 'deb [signed-by=%s] https://deb.xanmod.org %s main\n' "$key" "$OS_CODENAME" >"$list"; run apt-get update
 }
 
 xanmod_package() {
@@ -134,6 +135,7 @@ xanmod_uninstall() {
 }
 
 network_tune_enable() {
+  managed_backup_file network /etc/sysctl.d/99-vps-toolkit-network.conf >/dev/null || true
   cat >/etc/sysctl.d/99-vps-toolkit-network.conf <<'EOF'
 # Managed by vps-toolkit. Conservative VPS network tuning.
 net.core.default_qdisc=fq
@@ -174,7 +176,8 @@ swap_set() {
     die "检测到其他 Swap；为避免误删，请先人工处理"
     return
   fi
-  confirm "将把 $file 设置为 ${size}MB，继续？" || return 0
+  risk_preview "修改 Swap" "重建 $file 为 ${size}MB，并更新 /etc/fstab" "当前 /etc/fstab 会进入配置备份中心" || return 0
+  managed_backup_file swap /etc/fstab >/dev/null || true
   swapoff "$file" 2>/dev/null || true
   [ -f "$file" ] && cp -a "$file" "$BACKUP_DIR/swapfile.$(date +%s).bak" || true
   run rm -f "$file"
@@ -185,7 +188,8 @@ swap_set() {
 }
 
 swap_remove() {
-  confirm "确认停用并删除 /swapfile？" || return 0
+  risk_preview "删除 Swap" "停用并删除 /swapfile，修改 /etc/fstab" "当前 /etc/fstab 会进入配置备份中心" || return 0
+  managed_backup_file swap /etc/fstab >/dev/null || true
   swapoff /swapfile 2>/dev/null || true
   sed -i '\|^/swapfile[[:space:]]|d' /etc/fstab
   run rm -f /swapfile

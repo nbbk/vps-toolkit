@@ -17,29 +17,19 @@ IP及解锁：1 ChatGPT  2 Region  3 yeahwu
 EOF
   local c; read -r -p "请选择: " c
   case "$c" in
-    1) testsuite_run chatgpt https://cdn.jsdelivr.net/gh/missuo/OpenAI-Checker/openai.sh;;
-    2) testsuite_run region https://check.unlock.media;;
-    3) testsuite_run media https://github.com/yeahwu/check/raw/main/check.sh;;
-    11) testsuite_run besttrace https://git.io/besttrace;;
-    12) testsuite_run mtr https://raw.githubusercontent.com/zhucaidan/mtr_trace/main/mtr_trace.sh;;
-    13) testsuite_run superspeed https://git.io/superspeed_uxh;;
-    14) testsuite_run nexttrace https://nxtrace.org/nt;;
-    16) testsuite_run backtrace https://raw.githubusercontent.com/ludashi2020/backtrace/main/install.sh;;
-    18) testsuite_run netquality https://Net.Check.Place;;
-    19) testsuite_run tcpquality https://raw.githubusercontent.com/ibsgss/TcpQuality/main/runTcpQuality.sh;;
-    21) testsuite_run yabs https://yabs.sh -i -5;;
-    22) testsuite_run gb5 https://raw.githubusercontent.com/i-abc/GB5/main/gb5-test.sh;;
-    31) testsuite_run bench https://bench.sh;;
-    32) testsuite_run ecs https://github.com/spiritLHLS/ecs/raw/main/ecs.sh;;
-    33) testsuite_run nodequality https://run.NodeQuality.com;; 0) break;; *) warn "无效选择";;
+    1) testsuite_run chatgpt test-chatgpt;; 2) testsuite_run region test-region;; 3) testsuite_run media test-media;;
+    11) testsuite_run besttrace test-besttrace;; 12) testsuite_run mtr test-mtr;; 13) testsuite_run superspeed test-superspeed;;
+    14) testsuite_run nexttrace test-nexttrace;; 16) testsuite_run backtrace test-backtrace;; 18) testsuite_run netquality test-netquality;;
+    19) testsuite_run tcpquality test-tcpquality;; 21) testsuite_run yabs test-yabs -i -5;; 22) testsuite_run gb5 test-gb5;;
+    31) testsuite_run bench test-bench;; 32) testsuite_run ecs test-ecs;; 33) testsuite_run nodequality test-nodequality;; 0) break;; *) warn "无效选择";;
   esac
   submenu_pause
   done
 }
 
 testsuite_run() {
-  local name="$1" url="$2" file; shift 2
-  file="$(external_fetch "$url" "test-${name}.sh")" || return
+  local name="$1" source_id="$2" file; shift 2
+  file="$(external_fetch_id "$source_id")" || return
   confirm "运行第三方测试 $name？测试可能持续较久并产生流量" || return 0
   chmod 700 "$file"; bash "$file" "$@"
 }

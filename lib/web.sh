@@ -107,10 +107,10 @@ web_optimize() { warn "通用优化会启用 Docker 日志轮转；数据库参�
 web_uninstall() { web_safe_root || return; [ -d "$WEB_ROOT" ] || { warn "环境不存在"; return; }; warn "这会停止站点并删除 $WEB_ROOT，命名卷仍可能保留。"; confirm "确认卸载全部建站环境？" || return; find "$WEB_ROOT" -name compose.yml -print0 | while IFS= read -r -d '' f; do (cd "$(dirname "$f")" && docker compose down); done; rm -rf -- "$WEB_ROOT"; }
 
 web_install_panel() {
-  local type="$1" url name file
-  if [ "$type" = bt ]; then url=https://download.bt.cn/install/install_panel.sh; name=宝塔国内版; else url=https://www.aapanel.com/script/install_7.0_en.sh; name=aaPanel国际版; fi
+  local type="$1" source_id name file
+  if [ "$type" = bt ]; then source_id=bt-panel; name=宝塔国内版; else source_id=aapanel; name=aaPanel国际版; fi
   warn "$name 会取得服务器高级管理权限，并自行管理 Web、数据库和防火墙配置。不建议与现有 LDNMP 环境混装。"
-  file="$(external_fetch "$url" "panel-${type}-install.sh")" || return; sed -n '1,120p' "$file"
+  file="$(external_fetch_id "$source_id")" || return; sed -n '1,120p' "$file"
   confirm "确认执行 $name 官方安装器？" || return 0; chmod 700 "$file"
   if [ "$type" = bt ]; then bash "$file" ed8484bec; else bash "$file" aapanel; fi
 }

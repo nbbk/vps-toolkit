@@ -2,14 +2,20 @@
 set -Eeuo pipefail
 
 REPO="${VMT_GITHUB_REPO:-nbbk/vps-toolkit}"
-REF="${VMT_VERSION:-main}"
+REF="${VMT_VERSION:-}"
 TMP="$(mktemp -d)"
 trap 'rm -rf -- "$TMP"' EXIT
 
 [ "${EUID:-$(id -u)}" -eq 0 ] || { echo "请使用 root 运行，例如：curl ... | sudo bash" >&2; exit 1; }
 command -v curl >/dev/null 2>&1 || { echo "缺少 curl，请先安装" >&2; exit 1; }
 
-URL="https://github.com/${REPO}/archive/refs/heads/${REF}.tar.gz"
+if [ -n "$REF" ]; then
+  URL="https://github.com/${REPO}/archive/refs/tags/${REF}.tar.gz"
+else
+  REF="$(curl -fsSL --proto '=https' --tlsv1.2 "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null | sed -nE 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' | head -n1)"
+  if [ -n "$REF" ]; then URL="https://github.com/${REPO}/archive/refs/tags/${REF}.tar.gz"; else REF=main; URL="https://github.com/${REPO}/archive/refs/heads/main.tar.gz"; fi
+fi
+printf '安装来源：%s (%s)\n' "$REPO" "$REF"
 curl --fail --location --proto '=https' --tlsv1.2 "$URL" -o "$TMP/source.tar.gz"
 tar -xzf "$TMP/source.tar.gz" -C "$TMP"
 SOURCE_DIR="$(find "$TMP" -mindepth 1 -maxdepth 1 -type d | head -n 1)"

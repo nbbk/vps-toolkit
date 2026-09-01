@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 
 REPO="${VMT_GITHUB_REPO:-nbbk/vps-toolkit}"
+CHANNEL="${VMT_UPDATE_CHANNEL:-stable}"
 REF="${VMT_VERSION_REF:-main}"
 DEST="${VMT_INSTALL_DIR:-/opt/vps-toolkit}"
 STATE_DIR="${VMT_STATE_DIR:-/var/lib/vps-toolkit}"
@@ -34,7 +35,14 @@ wait_before_launch() {
 current="unknown"
 [ -f "$DEST/vps-tool.sh" ] && current="$(version_from_script "$DEST/vps-tool.sh")"
 current="${current:-unknown}"
-url="https://github.com/${REPO}/archive/refs/heads/${REF}.tar.gz"
+if [ -n "${VMT_UPDATE_ARCHIVE:-}" ]; then
+  url="local-test-archive"; REF="local"
+elif [ "$CHANNEL" = stable ]; then
+  release_tag="$(curl -fsSL --proto '=https' --tlsv1.2 "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null | sed -nE 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' | head -n1)"
+  if [ -n "$release_tag" ]; then url="https://github.com/${REPO}/archive/refs/tags/${release_tag}.tar.gz"; REF="$release_tag"
+  else url="https://github.com/${REPO}/archive/refs/heads/main.tar.gz"; REF="main-fallback"; fi
+elif [ "$CHANNEL" = testing ]; then url="https://github.com/${REPO}/archive/refs/heads/${REF}.tar.gz"
+else echo "更新通道只能是 stable 或 testing" >&2; exit 1; fi
 
 printf '正在检查更新：%s (%s)\n' "$REPO" "$REF"
 if [ -n "${VMT_UPDATE_ARCHIVE:-}" ]; then
@@ -47,7 +55,7 @@ printf '下载包 SHA-256: '; sha256sum "$TMP/source.tar.gz"
 tar -xzf "$TMP/source.tar.gz" -C "$TMP"
 source_dir="$(find "$TMP" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
 
-required=(vps-tool.sh install.sh uninstall.sh update.sh bootstrap.sh lib/core.sh lib/system.sh lib/firewall.sh lib/ssh.sh lib/docker.sh lib/oracle.sh lib/tools.sh lib/reinstall.sh lib/testsuite.sh lib/web.sh lib/basics.sh lib/workspace.sh)
+required=(vps-tool.sh install.sh uninstall.sh update.sh bootstrap.sh config/sources.tsv lib/core.sh lib/system.sh lib/firewall.sh lib/ssh.sh lib/docker.sh lib/oracle.sh lib/tools.sh lib/reinstall.sh lib/testsuite.sh lib/web.sh lib/basics.sh lib/workspace.sh lib/backup.sh lib/diagnostics.sh lib/security.sh lib/extensions.sh lib/cli.sh)
 for file in "${required[@]}"; do
   [ -f "$source_dir/$file" ] || { echo "更新包缺少文件：$file" >&2; exit 1; }
 done

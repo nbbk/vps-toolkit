@@ -50,8 +50,7 @@ firewall_status() {
 
 firewall_open_all() {
   local fw; fw="$(ensure_firewall)"
-  warn "开放全部端口会把所有监听服务暴露到公网，包括数据库、面板和内部 API。"
-  confirm "确认开放全部 TCP/UDP 端口？" || return 0
+  risk_preview "开放全部端口" "允许全部 TCP/UDP 入站，可能暴露数据库和内部 API" "nftables 会完整备份；UFW/firewalld 可由菜单第 20 项撤销" || return 0
   case "$fw" in
     ufw) run ufw default allow incoming; run ufw --force enable ;;
     firewalld) run firewall-cmd --permanent --add-port=1-65535/tcp; run firewall-cmd --permanent --add-port=1-65535/udp; run firewall-cmd --reload ;;
@@ -70,8 +69,7 @@ firewall_open_all() {
 
 firewall_restore_default() {
   local fw; fw="$(firewall_backend)"
-  warn "恢复默认拒绝入站前，请确认当前 SSH 端口已经单独放行。"
-  confirm "确认撤销全部端口开放？" || return 0
+  risk_preview "恢复入站防火墙" "撤销开放全部端口规则" "必须先单独放行当前 SSH 端口，否则可能失联" || return 0
   case "$fw" in
     ufw) run ufw default deny incoming ;;
     firewalld) run firewall-cmd --permanent --remove-port=1-65535/tcp || true; run firewall-cmd --permanent --remove-port=1-65535/udp || true; run firewall-cmd --reload ;;

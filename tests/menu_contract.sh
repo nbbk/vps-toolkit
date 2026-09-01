@@ -3,7 +3,7 @@ set -Eeuo pipefail
 ROOT="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 export VMT_BASE_DIR="$ROOT" VMT_STATE_DIR=/tmp/vmt-contract-state VMT_BACKUP_DIR=/tmp/vmt-contract-backup VMT_LOG_FILE=/tmp/vmt-contract.log VMT_DRY_RUN=1
 export PKG_FAMILY=apt OS_PRETTY="Test Linux"
-for module in core system firewall ssh docker oracle tools reinstall testsuite web basics workspace; do source "$ROOT/lib/$module.sh"; done
+for module in core system firewall ssh docker oracle tools reinstall testsuite web basics workspace backup diagnostics security extensions cli; do source "$ROOT/lib/$module.sh"; done
 
 [[ "$C_CYAN" == $'\033[36m' ]] || { echo "color escape is not an ANSI byte" >&2; exit 1; }
 if [ -r /etc/os-release ]; then
@@ -21,11 +21,12 @@ required_functions=(
   bbr_menu swap_ui docker_menu change_password change_ssh_port_ui ssh_security_check oracle_menu oracle_r_tanzhang oracle_oci_helper
   system_tools_menu reinstall_menu testsuite_menu web_menu basics_menu workspace_menu
   ip_family_menu ip_family_prefer ip_family_only4 ip_family_only6 ip_family_dual
+  compatibility_report diagnostic_report_create security_audit backup_center_menu extensions_menu cli_dispatch
 )
 for fn in "${required_functions[@]}"; do declare -F "$fn" >/dev/null || { echo "missing function: $fn" >&2; exit 1; }; done
 
-for module in core system firewall ssh docker oracle tools reinstall testsuite web basics workspace; do grep -q "source \"\$BASE_DIR/lib/\$module.sh\"\|for module in" "$ROOT/vps-tool.sh"; done
-for file in lib/core.sh lib/system.sh lib/firewall.sh lib/ssh.sh lib/docker.sh lib/oracle.sh lib/tools.sh lib/reinstall.sh lib/testsuite.sh lib/web.sh lib/basics.sh lib/workspace.sh; do grep -q "$file" "$ROOT/update.sh"; done
+for module in core system firewall ssh docker oracle tools reinstall testsuite web basics workspace backup diagnostics security extensions cli; do grep -q "source \"\$BASE_DIR/lib/\$module.sh\"\|for module in" "$ROOT/vps-tool.sh"; done
+for file in lib/core.sh lib/system.sh lib/firewall.sh lib/ssh.sh lib/docker.sh lib/oracle.sh lib/tools.sh lib/reinstall.sh lib/testsuite.sh lib/web.sh lib/basics.sh lib/workspace.sh lib/backup.sh lib/diagnostics.sh lib/security.sh lib/extensions.sh lib/cli.sh; do grep -q "$file" "$ROOT/update.sh"; done
 if grep -q "trap .* ERR" "$ROOT/vps-tool.sh"; then echo "unexpected global ERR trap" >&2; exit 1; fi
 for file in system docker oracle tools reinstall testsuite web basics workspace; do grep -q 'while true; do' "$ROOT/lib/$file.sh" || { echo "submenu is not persistent: $file" >&2; exit 1; }; done
 for menu in bbr_menu docker_menu oracle_menu system_tools_menu reinstall_menu testsuite_menu web_menu basics_menu; do "$menu" <<<"0" >/dev/null; done

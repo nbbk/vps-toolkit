@@ -59,7 +59,7 @@ EOF
   local c os ver file
   read -r -p "请选择: " c
   case "$c" in 1) os=debian; ver=13;; 2) os=debian; ver=12;; 3) os=debian; ver=11;; 4) os=ubuntu; ver=24.04;; 5) os=ubuntu; ver=22.04;; 6) os=ubuntu; ver=20.04;; *) return;; esac
-  file="$(external_fetch https://raw.githubusercontent.com/bin456789/reinstall/main/reinstall.sh reinstall.sh)" || return
+  file="$(external_fetch_id reinstall)" || return
   sed -n '1,100p' "$file"
   warn "执行后将清空系统盘并导致当前 SSH 断开。请先制作 OCI 启动卷备份，并确认串口控制台可用。"
   confirm "确认立即重装为 $os $ver？" || return 0
@@ -67,7 +67,7 @@ EOF
 }
 
 oracle_r_tanzhang() {
-  local file; file="$(external_fetch https://github.com/semicons/java_oci_manage/releases/latest/download/sh_client_bot.sh r-tanzhang-client.sh)" || return
+  local file; file="$(external_fetch_id r-tanzhang)" || return
   sed -n '1,120p' "$file"
   warn "R 探长会安装具有云账号与服务器管理能力的客户端。API 私钥和配置应只保存在你信任的机器上。"
   confirm "确认执行 semicons/java_oci_manage 官方安装器？" || return 0
@@ -75,7 +75,7 @@ oracle_r_tanzhang() {
 }
 
 oracle_oci_helper() {
-  local file; file="$(external_fetch https://github.com/Yohann0617/oci-helper/releases/latest/download/sh_oci-helper_install.sh oci-helper-install.sh)" || return
+  local file; file="$(external_fetch_id oci-helper)" || return
   sed -n '1,120p' "$file"; warn "这是 OCI Helper，不是 R 探长。"; confirm "确认执行 Yohann0617/oci-helper 安装器？" || return 0
   chmod 700 "$file"; bash "$file"
 }
@@ -141,7 +141,7 @@ EOF
 }
 
 oracle_jhb_ipv6() {
-  local file; file="$(external_fetch https://jhb.ovh/jb/v6.sh jhb-ipv6.sh)" || return
+  local file; file="$(external_fetch_id jhb-ipv6)" || return
   sed -n '1,120p' "$file"; confirm "确认执行参考项目使用的 JHB IPv6 第三方脚本？" || return 0
   chmod 700 "$file"; bash "$file"
 }

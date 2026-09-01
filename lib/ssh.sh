@@ -33,6 +33,8 @@ change_ssh_port() {
   if current_ssh_ports | grep -qx "$new"; then ok "SSH 已配置为端口 $new，无需修改"; return 0; fi
   ss -H -ltn 2>/dev/null | awk '{print $4}' | grep -Eq "(^|:)$new$" && { die "端口 $new 已被其他程序占用"; return; }
   confirm "将先开放 $new/tcp，再修改 SSH；旧端口 $old_ports 暂不关闭，继续？" || return 0
+  transaction_begin ssh-port; transaction_note "old=$old_ports new=$new"
+  managed_backup_file ssh "$config" >/dev/null || true
   firewall_apply open "$new" tcp
   backup="$BACKUP_DIR/sshd_config.$(date +%Y%m%d-%H%M%S).bak"; cp -a "$config" "$backup"
   mkdir -p /etc/ssh/sshd_config.d
@@ -40,7 +42,7 @@ change_ssh_port() {
   dropin_backup="$backup.dropin"
   if [ -f "$dropin" ]; then cp -a "$dropin" "$dropin_backup"; had_dropin=1; fi
   printf '# Managed by vps-toolkit\nPort %s\n' "$new" >"$dropin"; chmod 600 "$dropin"
-  if ! sshd -t; then restore_optional_file "$dropin" "$dropin_backup" "$had_dropin"; die "新配置校验失败，已回滚"; return; fi
+  if ! sshd -t; then restore_optional_file "$dropin" "$dropin_backup" "$had_dropin"; transaction_finish rolled-back; die "新配置校验失败，已回滚"; return; fi
 
   # Ubuntu 22.10+ may let systemd ssh.socket own port 22. In that mode the
   # sshd Port directive alone is valid but has no effect on the listener.
@@ -58,12 +60,12 @@ change_ssh_port() {
       restore_optional_file "$dropin" "$dropin_backup" "$had_dropin"
       restore_optional_file "$socket_override" "$socket_backup" "$had_socket_override"
       systemctl daemon-reload || true; systemctl restart ssh.socket || true
-      die "SSH Socket 重启失败，已回滚"; return
+      transaction_finish rolled-back; die "SSH Socket 重启失败，已回滚"; return
     fi
   elif ! service_restart ssh sshd; then
     restore_optional_file "$dropin" "$dropin_backup" "$had_dropin"
     service_restart ssh sshd || true
-    die "SSH 重启失败，已回滚"; return
+    transaction_finish rolled-back; die "SSH 重启失败，已回滚"; return
   fi
   local listening=0
   for _ in 1 2 3 4 5; do ss -H -ltn | awk '{print $4}' | grep -Eq "(^|:)$new$" && { listening=1; break; }; sleep 1; done
@@ -75,8 +77,9 @@ change_ssh_port() {
     else
       service_restart ssh sshd || true
     fi
-    die "新端口未监听，已回滚"; return
+    transaction_finish rolled-back; die "新端口未监听，已回滚"; return
   fi
+  transaction_finish success
   ok "SSH 已监听 $new；旧端口未自动关闭。请新开终端验证登录后再手动关闭旧端口"
 }
 

@@ -1,0 +1,10 @@
+name: Disposable VPS integration
+on:
+  workflow_dispatch:
+jobs:
+  integration:
+    if: ${{ vars.ENABLE_VPS_RUNNER_TESTS == 'true' }}
+    runs-on: [self-hosted, linux, vps-toolkit-disposable]
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo bash tests/vps_integration.sh

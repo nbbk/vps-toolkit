@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Euo pipefail
 
-VERSION="2.1.4"
+VERSION="2.2.0"
 TOOL_VERSION="$VERSION"
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 if command -v readlink >/dev/null 2>&1; then
@@ -11,7 +11,7 @@ fi
 BASE_DIR="$(CDPATH='' cd -- "$(dirname -- "$SCRIPT_PATH")" && pwd)"
 export VMT_BASE_DIR="$BASE_DIR"
 
-for module in core system firewall ssh docker oracle tools reinstall testsuite web basics workspace; do
+for module in core system firewall ssh docker oracle tools reinstall testsuite web basics workspace backup diagnostics security extensions cli; do
   # shellcheck source=/dev/null
   source "$BASE_DIR/lib/$module.sh"
 done
@@ -23,6 +23,14 @@ fi
 if [ "${1:-}" = "--update" ]; then
   require_root
   exec bash "$BASE_DIR/update.sh"
+fi
+
+if [ "$#" -gt 0 ]; then
+  case "${1:-}" in help|--help|-h|version|--version|-v) cli_dispatch "$@"; exit $?;; esac
+  require_root
+  detect_os
+  cli_dispatch "$@"
+  exit $?
 fi
 
 main_menu() {
@@ -40,17 +48,18 @@ ${C_CYAN}VPS 私人管理工具 v${TOOL_VERSION}${C_RESET}  ${OS_PRETTY:-unknown
  7. BBR 管理              8. 修改虚拟内存
  9. Docker 管理          10. 修改登录密码
 11. 修改 SSH 端口        12. SSH 安全检查
-13. 甲骨文云工具合集     14. 查看操作日志
+13. 扩展中心            14. 查看操作日志
 15. 检查并更新本工具      16. 卸载本工具
-17. 系统工具箱            18. 重装系统
+17. 系统工具箱            18. 配置备份中心
 19. 开放全部端口          20. 撤销全部端口开放
-21. 测试脚本合集          22. LDNMP 建站
+21. 兼容性诊断/报告       22. 安全体检
 23. 基础工具
 24. 后台工作区
  0. 退出
 --------------------------------------------------------
 EOF
     read -r -p "请选择: " choice
+    action_start "menu:$choice"
     case "$choice" in
       1) system_info ;;
       2) system_update ;;
@@ -64,16 +73,16 @@ EOF
       10) change_password ;;
       11) change_ssh_port_ui ;;
       12) ssh_security_check ;;
-      13) oracle_menu ;;
+      13) extensions_menu ;;
       14) less "$LOG_FILE" 2>/dev/null || true ;;
       15) exec bash "$BASE_DIR/update.sh" ;;
       16) bash "$BASE_DIR/uninstall.sh"; exit 0 ;;
       17) system_tools_menu ;;
-      18) reinstall_menu ;;
+      18) backup_center_menu ;;
       19) firewall_open_all ;;
       20) firewall_restore_default ;;
-      21) testsuite_menu ;;
-      22) web_menu ;;
+      21) diagnostics_menu ;;
+      22) security_audit ;;
       23) basics_menu ;;
       24) workspace_menu ;;
       0) exit 0 ;;

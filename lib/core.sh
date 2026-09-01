@@ -5,6 +5,7 @@ STATE_DIR="${VMT_STATE_DIR:-/var/lib/vps-toolkit}"
 BACKUP_DIR="${VMT_BACKUP_DIR:-$STATE_DIR/backups}"
 LOG_FILE="${VMT_LOG_FILE:-/var/log/vps-toolkit.log}"
 DRY_RUN="${VMT_DRY_RUN:-0}"
+CURRENT_ACTION="startup"
 
 say() { printf '%b\n' "$*"; }
 ok() { say "${C_GREEN}[OK]${C_RESET} $*"; }
@@ -16,7 +17,11 @@ ui_line() { printf '%b\n' "${C_CYAN}--------------------------------------------
 ui_header() { clear_screen; ui_line; printf '%b\n' "${C_CYAN}  $*${C_RESET}"; ui_line; }
 ui_item() { printf '  %b%-3s%b %s\n' "$C_CYAN" "$1" "$C_RESET" "$2"; }
 ui_status() { if "$@" >/dev/null 2>&1; then printf '%b●%b' "$C_GREEN" "$C_RESET"; else printf '%b○%b' "$C_YELLOW" "$C_RESET"; fi; }
-on_error() { say "${C_RED}操作失败（行 $1，状态 $2）。请查看日志：$LOG_FILE${C_RESET}" >&2; }
+on_error() {
+  log ERROR "action=$CURRENT_ACTION line=$1 status=$2"
+  say "${C_RED}操作失败｜功能：$CURRENT_ACTION｜行：$1｜状态：$2${C_RESET}" >&2
+  say "日志：$LOG_FILE；可运行 sudo nb report 导出诊断报告" >&2
+}
 
 require_root() {
   if [ "${EUID:-$(id -u)}" -ne 0 ]; then
@@ -27,7 +32,22 @@ require_root() {
   touch "$LOG_FILE"; chmod 600 "$LOG_FILE"
 }
 
-log() { printf '%s [%s] %s\n' "$(date -Is)" "${1:-INFO}" "${*:2}" >>"$LOG_FILE"; }
+log() { printf '%s [%s] [action=%s] %s\n' "$(date -Is)" "${1:-INFO}" "$CURRENT_ACTION" "${*:2}" >>"$LOG_FILE"; }
+action_start() { CURRENT_ACTION="$1"; log INFO "start"; }
+transaction_begin() {
+  local module="$1" id
+  id="$(date +%Y%m%d-%H%M%S)-$$"; VMT_TRANSACTION_ID="$id"
+  mkdir -p "$STATE_DIR/transactions"
+  printf 'id=%s\nmodule=%s\nstarted=%s\nstatus=running\nversion=%s\n' "$id" "$module" "$(date -Is)" "$TOOL_VERSION" >"$STATE_DIR/transactions/$id"
+  chmod 600 "$STATE_DIR/transactions/$id"; log INFO "transaction=$id begin module=$module"
+}
+transaction_note() { [ -n "${VMT_TRANSACTION_ID:-}" ] && printf 'change=%s\n' "$*" >>"$STATE_DIR/transactions/$VMT_TRANSACTION_ID"; }
+transaction_finish() {
+  local status="${1:-success}" file="$STATE_DIR/transactions/${VMT_TRANSACTION_ID:-none}"
+  [ -f "$file" ] || return 0
+  printf 'finished=%s\nfinal_status=%s\n' "$(date -Is)" "$status" >>"$file"
+  log INFO "transaction=${VMT_TRANSACTION_ID:-none} finish status=$status"; VMT_TRANSACTION_ID=""
+}
 run() {
   local rc
   log CMD "$(printf '%q ' "$@")"
@@ -41,6 +61,12 @@ confirm() {
   local prompt="${1:-确认继续？}" answer
   read -r -p "$prompt [y/N]: " answer
   [[ "$answer" =~ ^[Yy]$ ]]
+}
+risk_preview() {
+  local title="$1" changes="$2" rollback="$3"
+  printf '\n%b[高风险操作] %s%b\n' "$C_YELLOW" "$title" "$C_RESET"
+  printf '将要修改：%s\n%s\n' "$changes" "$rollback"
+  confirm "确认继续？"
 }
 valid_port() { [[ "${1:-}" =~ ^[0-9]+$ ]] && [ "$1" -ge 1 ] && [ "$1" -le 65535 ]; }
 valid_size_mb() { [[ "${1:-}" =~ ^[0-9]+$ ]] && [ "$1" -ge 128 ] && [ "$1" -le 262144 ]; }
@@ -57,6 +83,7 @@ detect_os() {
   # shellcheck disable=SC1091
   source /etc/os-release
   OS_ID="${ID,,}"; OS_LIKE="${ID_LIKE:-}"; OS_PRETTY="${PRETTY_NAME:-$OS_ID}"
+  OS_VERSION_ID="${VERSION_ID:-unknown}"; OS_CODENAME="${VERSION_CODENAME:-${UBUNTU_CODENAME:-unknown}}"
   case "$OS_ID $OS_LIKE" in
     *debian*|*ubuntu*) PKG_FAMILY=apt ;;
     *rhel*|*fedora*|*centos*|*rocky*|*almalinux*) command -v dnf >/dev/null && PKG_FAMILY=dnf || PKG_FAMILY=yum ;;

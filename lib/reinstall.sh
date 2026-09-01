@@ -26,7 +26,7 @@ EOF
     31) os=alpine;ver="";;32) os=arch;ver="";;33) os=kali;ver="";;34) os=openeuler;ver="";;35) os=opensuse;ver="";;36) os=fnos;ver="";;
     90) mode='dd'; read -r -p "HTTPS 镜像 URL: " img; [[ "$img" =~ ^https:// ]] || { die "只允许 HTTPS URL"; submenu_pause; continue; };; 0) break;; *) warn "无效选择"; submenu_pause; continue;;
   esac
-  file="$(external_fetch https://raw.githubusercontent.com/bin456789/reinstall/main/reinstall.sh reinstall.sh)" || return
+  file="$(external_fetch_id reinstall)" || return
   sed -n '1,80p' "$file"; warn "重装将清空系统盘并断开 SSH，请先备份启动卷和业务数据。"
   confirm "确认开始重装？" || { submenu_pause; continue; }; chmod 700 "$file"
   if [ "$mode" = dd ]; then bash "$file" dd --img "$img"; elif [ -n "$ver" ]; then bash "$file" "$os" "$ver"; else bash "$file" "$os"; fi

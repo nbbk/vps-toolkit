@@ -1,0 +1,32 @@
+name: Distribution matrix
+on:
+  push:
+  pull_request:
+jobs:
+  distro:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: debian:12
+            family: apt
+            prepare: apt-get update && apt-get install -y bash procps iproute2
+          - image: ubuntu:24.04
+            family: apt
+            prepare: apt-get update && apt-get install -y bash procps iproute2
+          - image: rockylinux:9
+            family: dnf
+            prepare: dnf install -y procps-ng iproute
+          - image: alpine:3.20
+            family: apk
+            prepare: apk add --no-cache bash coreutils procps iproute2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test ${{ matrix.image }}
+        run: >-
+          docker run --rm
+          -e EXPECTED_FAMILY=${{ matrix.family }}
+          -v "$PWD:/src:ro"
+          ${{ matrix.image }}
+          sh -lc '${{ matrix.prepare }}; bash /src/tests/distro_contract.sh'
