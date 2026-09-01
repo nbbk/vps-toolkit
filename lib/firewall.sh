@@ -55,7 +55,13 @@ firewall_open_all() {
   case "$fw" in
     ufw) run ufw default allow incoming; run ufw --force enable ;;
     firewalld) run firewall-cmd --permanent --add-port=1-65535/tcp; run firewall-cmd --permanent --add-port=1-65535/udp; run firewall-cmd --reload ;;
-    nft) die "检测到原生 nftables，拒绝覆盖现有规则"; return ;;
+    nft)
+      local backup="$BACKUP_DIR/nftables-before-open-all-$(date +%Y%m%d-%H%M%S).nft"
+      nft list ruleset >"$backup" || { die "无法备份 nftables 规则"; return; }
+      run nft flush ruleset || { die "清空 nftables 规则失败"; return; }
+      printf '%s\n' "$backup" >"$STATE_DIR/nftables-last-backup"
+      warn "nftables 已清空，原规则备份：$backup"
+      ;;
     *) die "没有可管理的防火墙"; return ;;
   esac
   ok "机内防火墙已开放全部端口；云安全组仍需单独配置"
@@ -68,6 +74,13 @@ firewall_restore_default() {
   case "$fw" in
     ufw) run ufw default deny incoming ;;
     firewalld) run firewall-cmd --permanent --remove-port=1-65535/tcp || true; run firewall-cmd --permanent --remove-port=1-65535/udp || true; run firewall-cmd --reload ;;
+    nft)
+      local pointer="$STATE_DIR/nftables-last-backup" backup
+      [ -f "$pointer" ] || { die "没有找到本工具创建的 nftables 备份"; return; }
+      backup="$(cat "$pointer")"; [ -f "$backup" ] || { die "nftables 备份文件不存在"; return; }
+      run nft -f "$backup" || { die "恢复 nftables 规则失败"; return; }
+      ok "已恢复 nftables 规则：$backup"; return
+      ;;
     *) die "当前防火墙不支持自动恢复"; return ;;
   esac
   ok "已撤销全部端口开放规则"

@@ -29,10 +29,14 @@ require_root() {
 
 log() { printf '%s [%s] %s\n' "$(date -Is)" "${1:-INFO}" "${*:2}" >>"$LOG_FILE"; }
 run() {
+  local rc
   log CMD "$(printf '%q ' "$@")"
   if [ "$DRY_RUN" = 1 ]; then printf '[DRY-RUN] '; printf '%q ' "$@"; printf '\n'; return 0; fi
   "$@" 2>&1 | tee -a "$LOG_FILE"
+  rc="${PIPESTATUS[0]}"
+  if [ "$rc" -ne 0 ]; then log ERROR "命令状态 $rc: $(printf '%q ' "$@")"; return "$rc"; fi
 }
+submenu_pause() { printf '\n'; read -r -p "按回车返回当前菜单..." _ || true; }
 confirm() {
   local prompt="${1:-确认继续？}" answer
   read -r -p "$prompt [y/N]: " answer

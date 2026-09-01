@@ -16,6 +16,7 @@ workspace_enter() {
 }
 
 workspace_menu() {
+  while true; do
   ui_header "后台工作区（tmux）"
   say "即使 SSH 断开，工作区中的任务也会继续运行。"
   say "退出但保留任务：按 Ctrl+b，再按 d。"
@@ -29,8 +30,10 @@ workspace_menu() {
     22) read -r -p "工作区名称: " name; workspace_enter "$name";;
     23) read -r -p "已有工作区名称: " name; workspace_valid_name "$name" && tmux has-session -t "=$name" 2>/dev/null && tmux attach -t "=$name" || die "工作区不存在";;
     24) read -r -p "删除工作区名称: " name; workspace_valid_name "$name" || return; tmux has-session -t "=$name" 2>/dev/null || { die "工作区不存在"; return; }; confirm "终止并删除 $name？" && tmux kill-session -t "=$name";;
-    25) workspace_autostart_disable;;
+    25) workspace_autostart_disable;; 0) break;; *) warn "无效选择";;
   esac
+  submenu_pause
+  done
 }
 
 workspace_autostart_enable() {

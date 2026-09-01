@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
 testsuite_menu() {
+  while true; do
+  ui_header "测试脚本合集"
   cat <<'EOF'
 测试脚本合集
 --------------------------------------------------------
@@ -29,8 +31,10 @@ EOF
     22) testsuite_run gb5 https://raw.githubusercontent.com/i-abc/GB5/main/gb5-test.sh;;
     31) testsuite_run bench https://bench.sh;;
     32) testsuite_run ecs https://github.com/spiritLHLS/ecs/raw/main/ecs.sh;;
-    33) testsuite_run nodequality https://run.NodeQuality.com;;
+    33) testsuite_run nodequality https://run.NodeQuality.com;; 0) break;; *) warn "无效选择";;
   esac
+  submenu_pause
+  done
 }
 
 testsuite_run() {

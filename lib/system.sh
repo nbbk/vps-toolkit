@@ -58,6 +58,7 @@ bbr_disable() {
 }
 
 bbr_menu() {
+  while true; do
   clear_screen; bbr_status
   cat <<'EOF'
 
@@ -74,8 +75,10 @@ EOF
   read -r -p "请选择: " c
   case "$c" in
     1) bbr_enable;; 2) bbr_disable;; 3) xanmod_install install;; 4) xanmod_install update;;
-    5) xanmod_uninstall;; 6) network_tune_enable;; 7) network_tune_disable;; 8) bbr_detailed_status;;
+    5) xanmod_uninstall;; 6) network_tune_enable;; 7) network_tune_disable;; 8) bbr_detailed_status;; 0) break;; *) warn "无效选择";;
   esac
+  submenu_pause
+  done
 }
 
 xanmod_supported() {

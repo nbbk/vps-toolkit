@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 oracle_menu() {
+  while true; do
   clear_screen
   cat <<'EOF'
 甲骨文云脚本合集
@@ -17,8 +18,10 @@ EOF
   case "$c" in
     1) oracle_keepalive_install;; 2) oracle_keepalive_remove;; 3) oracle_reinstall;;
     4) oracle_r_helper;; 5) oracle_root_login_enable;; 6) oracle_root_login_disable;;
-    7) oracle_ipv6_repair;; 8) oracle_jhb_ipv6;; 9) oracle_metadata;;
+    7) oracle_ipv6_repair;; 8) oracle_jhb_ipv6;; 9) oracle_metadata;; 0) break;; *) warn "无效选择";;
   esac
+  submenu_pause
+  done
 }
 
 external_fetch() {

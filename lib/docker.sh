@@ -15,6 +15,7 @@ docker_install() {
 }
 
 docker_menu() {
+  while true; do
   ui_header "Docker 管理"
   printf '  1. 安装/更新 Docker       2. Docker 全局状态\n  3. 容器管理                4. 镜像管理\n  5. 网络管理                6. 卷管理\n  7. 清理无用资源            8. 配置日志轮转\n  9. 查看 daemon.json       10. 开启 Docker IPv6\n 11. 关闭 Docker IPv6       12. 备份 Docker 元数据/卷\n 13. 卸载 Docker 环境         0. 返回\n'
   ui_line
@@ -25,8 +26,10 @@ docker_menu() {
     3) docker_container_menu;; 4) docker_image_menu;; 5) docker_network_menu;; 6) docker_volume_menu;;
     7) docker_require && confirm "清理未使用的容器、网络、构建缓存和悬空镜像？" && run docker system prune ;;
     8) docker_daemon_logging;; 9) docker_daemon_show;; 10) docker_ipv6 on;; 11) docker_ipv6 off;;
-    12) docker_backup;; 13) docker_uninstall;;
+    12) docker_backup;; 13) docker_uninstall;; 0) break;; *) warn "无效选择";;
   esac
+  submenu_pause
+  done
 }
 
 docker_require() {

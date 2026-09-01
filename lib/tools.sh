@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
 system_tools_menu() {
+  while true; do
+  ui_header "系统工具箱"
   cat <<'EOF'
 系统工具箱
 --------------------------------------------------------
@@ -20,11 +22,25 @@ EOF
     7) cat /etc/resolv.conf;; 8) tools_dns;; 9) getent passwd | awk -F: '$3>=1000 || $1=="root" {print $1,$3,$6,$7}';;
     10) tools_add_user;; 11) tools_delete_user;; 12) swap_ui;; 13) tools_timezone;; 14) bbr_menu;; 15) system_update;; 16) system_clean;;
     17) tools_services;; 18) tools_cron;; 19) tools_logs;; 20) tools_fail2ban;; 21) ssh_security_check;; 22) firewall_open_all;; 23) firewall_restore_default;;
+    0) break;; *) warn "无效选择";;
   esac
+  submenu_pause
+  done
 }
 
 tools_hostname() { local n; read -r -p "新主机名: " n; [[ "$n" =~ ^[A-Za-z0-9][A-Za-z0-9.-]{0,62}$ ]] || { die "主机名格式无效"; return; }; confirm "修改主机名为 $n？" && run hostnamectl set-hostname "$n"; }
-tools_timezone() { command -v timedatectl >/dev/null || { die "系统不支持 timedatectl"; return; }; timedatectl list-timezones | grep -E 'Asia/(Shanghai|Hong_Kong|Tokyo|Singapore)|UTC' || true; local z; read -r -p "时区 [Asia/Shanghai]: " z; z="${z:-Asia/Shanghai}"; timedatectl list-timezones | grep -qx "$z" || { die "无效时区"; return; }; run timedatectl set-timezone "$z"; }
+tools_timezone() {
+  command -v timedatectl >/dev/null || { die "系统不支持 timedatectl"; return; }
+  cat <<'EOF'
+1. Asia/Shanghai   2. Asia/Hong_Kong   3. Asia/Singapore
+4. Asia/Tokyo      5. UTC              6. Europe/London
+7. America/New_York  8. America/Los_Angeles  9. 自定义
+0. 返回
+EOF
+  local c z; read -r -p "请选择时区 [1]: " c; c="${c:-1}"
+  case "$c" in 1) z=Asia/Shanghai;;2) z=Asia/Hong_Kong;;3) z=Asia/Singapore;;4) z=Asia/Tokyo;;5) z=UTC;;6) z=Europe/London;;7) z=America/New_York;;8) z=America/Los_Angeles;;9) read -r -p "时区名称: " z;;*) return;;esac
+  timedatectl list-timezones | grep -qx "$z" || { die "无效时区：$z"; return; }; run timedatectl set-timezone "$z" && ok "时区已修改为 $z"
+}
 tools_dns() { local values; read -r -p "DNS 地址，空格分隔 [1.1.1.1 8.8.8.8]: " values; values="${values:-1.1.1.1 8.8.8.8}"; confirm "写入 /etc/resolv.conf？网络管理器以后可能覆盖它" || return 0; cp -a /etc/resolv.conf "$BACKUP_DIR/resolv.conf.$(date +%s).bak"; : >/etc/resolv.conf; local x; for x in $values; do printf 'nameserver %s\n' "$x" >>/etc/resolv.conf; done; }
 tools_add_user() { local u; read -r -p "新用户名: " u; [[ "$u" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] || { die "用户名格式无效"; return; }; id "$u" >/dev/null 2>&1 && { die "用户已存在"; return; }; run useradd -m -s /bin/bash "$u"; passwd "$u"; command -v usermod >/dev/null && run usermod -aG "$(getent group sudo >/dev/null && echo sudo || echo wheel)" "$u"; }
 tools_delete_user() { local u; read -r -p "删除用户名: " u; [ "$u" != root ] || { die "禁止删除 root"; return; }; id "$u" >/dev/null 2>&1 || { die "用户不存在"; return; }; confirm "删除用户 $u（保留家目录）？" && run userdel "$u"; }

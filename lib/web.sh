@@ -3,6 +3,7 @@
 WEB_ROOT="${VMT_WEB_ROOT:-/opt/vps-web}"
 
 web_menu() {
+  while true; do
   ui_header "LDNMP 建站"
   cat <<'EOF'
   1. 安装 LDNMP 环境        2. 安装 WordPress
@@ -21,8 +22,10 @@ EOF
     1) web_install_ldnmp;; 2) web_install_wordpress;; 3) web_install_discuz;; 4) web_install_halo;;
     5) web_install_typecho;; 6) web_install_vaultwarden;; 7) web_static;; 8) web_proxy;;
     9) web_status;; 10) web_backup;; 11) web_restore;; 12) web_update;; 13) web_optimize;; 14) web_uninstall;;
-    15) web_install_panel bt;; 16) web_install_panel aapanel;;
+    15) web_install_panel bt;; 16) web_install_panel aapanel;; 0) break;; *) warn "无效选择";;
   esac
+  submenu_pause
+  done
 }
 
 web_safe_root() { case "$WEB_ROOT" in /|/opt|/var|/usr|"") die "不安全的建站根目录：$WEB_ROOT"; return 1;; /*) return 0;; *) die "建站根目录必须是绝对路径"; return 1;; esac; }

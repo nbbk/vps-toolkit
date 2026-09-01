@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Euo pipefail
 
-VERSION="2.0.0"
+VERSION="2.0.1"
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 if command -v readlink >/dev/null 2>&1; then
   RESOLVED_PATH="$(readlink -f -- "$SCRIPT_PATH" 2>/dev/null || true)"
@@ -82,5 +82,4 @@ EOF
   done
 }
 
-trap 'on_error "$LINENO" "$?"' ERR
 main_menu "$@"

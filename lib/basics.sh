@@ -10,6 +10,7 @@ basics_status() {
 }
 
 basics_menu() {
+  while true; do
   basics_status
   cat <<'EOF'
 --------------------------------------------------------
@@ -25,14 +26,16 @@ EOF
   case "$c" in
     1) p=curl;;2) p=wget;;3) p=sudo;;4) p=socat;;5) p=htop;;6) p=iftop;;7) p=unzip;;8) p=tar;;9) p=tmux;;10) p=ffmpeg;;11) p=btop;;12) p=ranger;;13) p=ncdu;;14) p=fzf;;15) p=vim;;16) p=nano;;17) p=git;;
     21) p=cmatrix;;22) p=sl;;26) p=bastet;;27) p=nsnake;;28) p=ninvaders;;
-    31) pkg_install "${basic_packages[@]}" "${fun_packages[@]}"; return;;
-    32) pkg_install "${basic_packages[@]}"; return;;
-    33) confirm "卸载本菜单列出的全部工具？" && basics_remove "${basic_packages[@]}" "${fun_packages[@]}"; return;;
-    41) read -r -p "软件包名: " p; basics_valid_package "$p" || { die "包名格式无效"; return; };;
-    42) read -r -p "软件包名: " p; basics_valid_package "$p" || { die "包名格式无效"; return; }; confirm "卸载 $p？" && basics_remove "$p"; return;;
-    *) return;;
+    31) pkg_install "${basic_packages[@]}" "${fun_packages[@]}"; submenu_pause; continue;;
+    32) pkg_install "${basic_packages[@]}"; submenu_pause; continue;;
+    33) confirm "卸载本菜单列出的全部工具？" && basics_remove "${basic_packages[@]}" "${fun_packages[@]}"; submenu_pause; continue;;
+    41) read -r -p "软件包名: " p; basics_valid_package "$p" || { die "包名格式无效"; submenu_pause; continue; };;
+    42) read -r -p "软件包名: " p; basics_valid_package "$p" || { die "包名格式无效"; submenu_pause; continue; }; confirm "卸载 $p？" && basics_remove "$p"; submenu_pause; continue;;
+    0) break;; *) warn "无效选择"; submenu_pause; continue;;
   esac
   pkg_install "$p"
+  submenu_pause
+  done
 }
 
 basics_valid_package() { [[ "${1:-}" =~ ^[A-Za-z0-9][A-Za-z0-9+._-]{0,63}$ ]]; }
