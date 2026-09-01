@@ -7,7 +7,7 @@ for module in core system firewall ssh docker oracle tools reinstall testsuite w
 
 required_functions=(
   system_info system_update system_clean firewall_open_ui firewall_close_ui firewall_open_all firewall_restore_default
-  bbr_menu swap_ui docker_menu change_password change_ssh_port_ui ssh_security_check oracle_menu
+  bbr_menu swap_ui docker_menu change_password change_ssh_port_ui ssh_security_check oracle_menu oracle_r_tanzhang oracle_oci_helper
   system_tools_menu reinstall_menu testsuite_menu web_menu basics_menu workspace_menu
   ip_family_menu ip_family_prefer ip_family_only4 ip_family_only6 ip_family_dual
 )

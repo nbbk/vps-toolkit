@@ -1,6 +1,6 @@
 # VPS 私人管理工具完整功能说明
 
-本文对应 `vps-toolkit 2.1.0`。所有菜单操作都需要 root 权限；推荐使用 `sudo nb` 进入。确认提示统一为 `[y/N]`：输入 `y` 或 `Y` 执行，输入 `n` 或直接回车取消。所有二级菜单执行功能后会留在当前菜单，只有选择 `0` 才返回主菜单。
+本文对应 `vps-toolkit 2.1.1`。所有菜单操作都需要 root 权限；推荐使用 `sudo nb` 进入。确认提示统一为 `[y/N]`：输入 `y` 或 `Y` 执行，输入 `n` 或直接回车取消。所有二级菜单执行功能后会留在当前菜单，只有选择 `0` 才返回主菜单。
 
 ## 一、安装、启动与文件位置
 
@@ -232,7 +232,8 @@ net.ipv4.tcp_congestion_control=bbr
 | 功能 | 上游来源 | 本工具的处理方式 |
 |---|---|---|
 | DD 重装 | `github.com/bin456789/reinstall` | 执行时下载、计算 SHA-256、显示前 100 行、确认后运行 |
-| R 探长 | `github.com/Yohann0617/oci-helper` | 执行时下载最新 Release、计算 SHA-256、显示前 120 行、确认后运行 |
+| R 探长 | `github.com/semicons/java_oci_manage` | 执行时下载官方 Release 的 `sh_client_bot.sh`、计算 SHA-256、显示前 120 行、确认后运行 |
+| OCI Helper | `github.com/Yohann0617/oci-helper` | 执行时下载最新 Release、计算 SHA-256、显示前 120 行、确认后运行 |
 | JHB IPv6 | `https://jhb.ovh/jb/v6.sh` | 执行时下载、计算 SHA-256、显示前 120 行、确认后运行 |
 
 采用这种方式是为了保留作者归属、避免未经许可证允许复制代码，并让用户明确知道实际执行内容来自哪里。SHA-256 只用于标识本次下载文件，不能证明第三方代码安全。如果不信任上游，请不要输入 `y`，并优先使用本仓库内置功能。
@@ -258,9 +259,9 @@ net.ipv4.tcp_congestion_control=bbr
 
 确认执行后会清空系统盘并中断 SSH，通常不可撤销。必须提前备份启动卷和业务数据，确认目标系统、网络、登录方式及 OCI 串口控制台。
 
-### 4. R 探长开机脚本
+### 4. R 探长
 
-下载并运行 `Yohann0617/oci-helper` 的最新发布安装器。执行前显示来源、SHA-256 和脚本前 120 行。它属于第三方工具，后续行为和兼容性由上游项目决定。
+下载并运行 `semicons/java_oci_manage` 官方 Release 中的 `sh_client_bot.sh`。执行前显示来源、SHA-256 和脚本前 120 行。R 探长具备 OCI 等多云账号、实例和 SSH 管理能力，API 私钥与配置只应放在可信服务器上。
 
 ### 5. 开启 Root 密码登录
 
@@ -294,6 +295,10 @@ net.ipv4.tcp_congestion_control=bbr
 ### 9. 查看 OCI 元数据与网络
 
 显示 IPv6 状态并查询 OCI 实例元数据服务。输出会尝试隐藏 SSH 公钥和用户数据等敏感字段。该功能只在 OCI 实例内有效。
+
+### 10. OCI Helper
+
+下载并运行 `Yohann0617/oci-helper` 的官方 Release 安装器。该项目此前被错误标记为“R 探长”，从 2.1.1 起已纠正名称并作为独立入口保留。
 
 ## 八、日志、更新与卸载
 
