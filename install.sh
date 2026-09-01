@@ -6,6 +6,7 @@ DEST="${VMT_INSTALL_DIR:-/opt/vps-toolkit}"
 install -d -m 0755 "$DEST" "$DEST/lib"
 install -m 0755 "$SRC/vps-tool.sh" "$DEST/vps-tool.sh"
 install -m 0755 "$SRC/uninstall.sh" "$DEST/uninstall.sh"
+install -m 0755 "$SRC/update.sh" "$DEST/update.sh"
 install -m 0644 "$SRC"/lib/*.sh "$DEST/lib/"
 ln -sfn "$DEST/vps-tool.sh" /usr/local/bin/vps-tool
 ln -sfn "$DEST/vps-tool.sh" /usr/local/bin/nb

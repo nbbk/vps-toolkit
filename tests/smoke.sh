@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 ROOT="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-for file in "$ROOT"/vps-tool.sh "$ROOT"/install.sh "$ROOT"/uninstall.sh "$ROOT"/bootstrap.sh "$ROOT"/lib/*.sh; do bash -n "$file"; done
+for file in "$ROOT"/vps-tool.sh "$ROOT"/install.sh "$ROOT"/uninstall.sh "$ROOT"/update.sh "$ROOT"/bootstrap.sh "$ROOT"/lib/*.sh; do bash -n "$file"; done
 
 # 安装后的 /usr/local/bin/vps-tool 是符号链接；主脚本必须从真实路径加载 lib。
 LINK_DIR="$(mktemp -d)"

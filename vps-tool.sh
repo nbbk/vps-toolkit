@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-VERSION="1.2.0"
+VERSION="1.3.0"
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 if command -v readlink >/dev/null 2>&1; then
   RESOLVED_PATH="$(readlink -f -- "$SCRIPT_PATH" 2>/dev/null || true)"
@@ -18,6 +18,10 @@ done
 if [ "${1:-}" = "--uninstall" ]; then
   require_root
   exec bash "$BASE_DIR/uninstall.sh"
+fi
+if [ "${1:-}" = "--update" ]; then
+  require_root
+  exec bash "$BASE_DIR/update.sh"
 fi
 
 main_menu() {
@@ -36,7 +40,7 @@ ${C_CYAN}VPS 私人管理工具 v${VERSION}${C_RESET}  ${OS_PRETTY:-unknown}
  9. Docker 管理          10. 修改登录密码
 11. 修改 SSH 端口        12. SSH 安全检查
 13. 甲骨文云工具合集     14. 查看操作日志
-15. 卸载本工具
+15. 检查并更新本工具      16. 卸载本工具
  0. 退出
 --------------------------------------------------------
 EOF
@@ -56,7 +60,8 @@ EOF
       12) ssh_security_check ;;
       13) oracle_menu ;;
       14) less "$LOG_FILE" 2>/dev/null || true ;;
-      15) bash "$BASE_DIR/uninstall.sh"; exit 0 ;;
+      15) bash "$BASE_DIR/update.sh" ;;
+      16) bash "$BASE_DIR/uninstall.sh"; exit 0 ;;
       0) exit 0 ;;
       *) warn "无效选择" ;;
     esac
