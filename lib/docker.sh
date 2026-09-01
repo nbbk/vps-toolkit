@@ -17,15 +17,19 @@ docker_menu() {
   read -r -p "请选择: " c
   case "$c" in
     1) docker_install ;;
-    2) docker ps -a ;;
+    2) docker_require && docker ps -a ;;
     3|4|5|6|7) docker_container_action "$c" ;;
-    8) confirm_phrase PRUNE "将删除未使用的容器、网络和悬空镜像" && run docker system prune ;;
-    9) docker info ;;
+    8) docker_require && confirm_phrase PRUNE "将删除未使用的容器、网络和悬空镜像" && run docker system prune ;;
+    9) docker_require && docker info ;;
   esac
 }
 
+docker_require() {
+  command -v docker >/dev/null 2>&1 || { die "Docker 未安装，请先选择 1 安装 Docker"; return 1; }
+}
+
 docker_container_action() {
-  command -v docker >/dev/null || { die "Docker 未安装"; return; }
+  docker_require || return
   docker ps -a --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
   local name; read -r -p "容器名（只允许现有精确名称）: " name
   docker inspect "$name" >/dev/null 2>&1 || { die "容器不存在"; return; }

@@ -58,10 +58,102 @@ bbr_disable() {
 }
 
 bbr_menu() {
-  bbr_status
-  printf '\n1. 启用内核原生 BBR\n2. 撤销本工具配置\n0. 返回\n'
+  clear_screen; bbr_status
+  cat <<'EOF'
+
+BBR 管理
+--------------------------------------------------------
+1. 启用当前内核原生 BBR       2. 撤销 BBR 配置
+3. 安装 XanMod BBRv3 内核     4. 更新 XanMod BBRv3 内核
+5. 卸载 XanMod BBRv3 内核     6. 网络参数优化
+7. 撤销网络参数优化           8. 查看详细状态
+0. 返回
+--------------------------------------------------------
+说明：BBRv3 内核管理仅支持 x86_64 Debian 12+/Ubuntu 24.04+。
+EOF
   read -r -p "请选择: " c
-  case "$c" in 1) bbr_enable;; 2) bbr_disable;; esac
+  case "$c" in
+    1) bbr_enable;; 2) bbr_disable;; 3) xanmod_install install;; 4) xanmod_install update;;
+    5) xanmod_uninstall;; 6) network_tune_enable;; 7) network_tune_disable;; 8) bbr_detailed_status;;
+  esac
+}
+
+xanmod_supported() {
+  [ "$(uname -m)" = x86_64 ] || { die "XanMod BBRv3 受控安装仅支持 x86_64"; return 1; }
+  [ "$PKG_FAMILY" = apt ] || { die "仅支持 Debian/Ubuntu 的 APT 系统"; return 1; }
+  case "${VERSION_CODENAME:-}" in bookworm|trixie|forky|sid|noble|plucky|questing|resolute) return 0;; esac
+  die "XanMod 官方源不支持当前发行版代号：${VERSION_CODENAME:-unknown}"; return 1
+}
+
+xanmod_installed() { dpkg-query -W -f='${Package}\n' 'linux-*xanmod*' 2>/dev/null | grep -q '^linux-.*xanmod'; }
+
+xanmod_psabi_level() {
+  local flags level=1 f; flags=" $(grep -m1 '^flags' /proc/cpuinfo 2>/dev/null | cut -d: -f2) "
+  for f in cx16 lahf_lm popcnt sse4_1 sse4_2 ssse3; do [[ "$flags" = *" $f "* ]] || { echo 1; return; }; done; level=2
+  for f in avx avx2 bmi1 bmi2 f16c fma movbe xsave; do [[ "$flags" = *" $f "* ]] || { echo "$level"; return; }; done
+  echo 3
+}
+
+xanmod_add_repo() {
+  pkg_install ca-certificates curl gnupg
+  local key=/usr/share/keyrings/xanmod-archive-keyring.gpg list=/etc/apt/sources.list.d/xanmod-release.list tmp
+  tmp="$(mktemp)"; run curl --fail --location --proto '=https' --tlsv1.2 https://dl.xanmod.org/archive.key -o "$tmp"
+  gpg --batch --yes --dearmor -o "$key" "$tmp"; rm -f "$tmp"; chmod 644 "$key"
+  printf 'deb [signed-by=%s] https://deb.xanmod.org %s main\n' "$key" "$VERSION_CODENAME" >"$list"; run apt-get update
+}
+
+xanmod_package() {
+  local level prefix pkg; level="$(xanmod_psabi_level)"
+  for prefix in linux-xanmod linux-xanmod-lts; do
+    while [ "$level" -ge 1 ]; do pkg="${prefix}-x64v${level}"; apt-cache show "$pkg" >/dev/null 2>&1 && { echo "$pkg"; return; }; level=$((level - 1)); done
+    level="$(xanmod_psabi_level)"
+  done
+  return 1
+}
+
+xanmod_install() {
+  local action="$1" verb pkg; xanmod_supported || return
+  [ "$action" != update ] || xanmod_installed || { die "尚未安装 XanMod"; return; }
+  [ "$action" = install ] && verb=安装 || verb=更新
+  confirm_phrase XANMOD "将${verb}第三方 XanMod 内核；可能导致无法启动，请先做云盘快照" || return 0
+  xanmod_add_repo || return; pkg="$(xanmod_package)" || { die "未找到适配 CPU 的 XanMod 软件包"; return; }
+  if [ "$action" = update ]; then run apt-get install -y --only-upgrade "$pkg" || run apt-get install -y "$pkg"; else run apt-get install -y "$pkg"; fi
+  bbr_enable; ok "XanMod 处理完成：$pkg。请确认控制台救援可用后手动重启"
+}
+
+xanmod_uninstall() {
+  xanmod_installed || { warn "未安装 XanMod"; return; }
+  printf '当前运行内核：%s\n' "$(uname -r)"; dpkg-query -W -f='${Package} ${Version}\n' 'linux-*xanmod*' 2>/dev/null || true
+  confirm_phrase REMOVE-XANMOD "将卸载 XanMod；必须确保发行版原生内核仍存在" || return 0
+  dpkg-query -W -f='${Package}\n' 'linux-image-*' 2>/dev/null | grep -qv xanmod || { die "未检测到备用原生内核，拒绝卸载"; return; }
+  run apt-get purge -y 'linux-*xanmod*'; run apt-get autoremove -y; command -v update-grub >/dev/null && run update-grub || true
+  rm -f /etc/apt/sources.list.d/xanmod-release.list /usr/share/keyrings/xanmod-archive-keyring.gpg; ok "XanMod 已卸载；请手动重启"
+}
+
+network_tune_enable() {
+  cat >/etc/sysctl.d/99-vps-toolkit-network.conf <<'EOF'
+# Managed by vps-toolkit. Conservative VPS network tuning.
+net.core.default_qdisc=fq
+net.ipv4.tcp_congestion_control=bbr
+net.ipv4.tcp_fastopen=3
+net.ipv4.tcp_mtu_probing=1
+net.ipv4.tcp_slow_start_after_idle=0
+net.ipv4.tcp_keepalive_time=600
+net.ipv4.tcp_keepalive_intvl=30
+net.ipv4.tcp_keepalive_probes=5
+net.ipv4.tcp_fin_timeout=15
+net.core.somaxconn=4096
+net.ipv4.tcp_max_syn_backlog=8192
+EOF
+  run sysctl --system; ok "网络参数优化已应用"
+}
+
+network_tune_disable() { confirm "撤销本工具的网络参数优化？" || return 0; rm -f /etc/sysctl.d/99-vps-toolkit-network.conf; run sysctl --system; }
+
+bbr_detailed_status() {
+  bbr_status; printf '\nXanMod 软件包:\n'; dpkg-query -W -f='${Package} ${Version}\n' 'linux-*xanmod*' 2>/dev/null || echo 未安装
+  printf '\n相关 sysctl:\n'; sysctl net.ipv4.tcp_congestion_control net.core.default_qdisc net.ipv4.tcp_fastopen net.ipv4.tcp_mtu_probing 2>/dev/null || true
+  [ -f /var/run/reboot-required ] && warn "系统需要重启" || true
 }
 
 swap_ui() {

@@ -2,12 +2,12 @@
 
 一个面向自用 VPS 的交互式 Bash 工具，参考了 `kejilion/sh` 的功能分类，但重新实现为小型模块化代码。脚本不含遥测、不保存密码，也不默认执行网上下载的脚本。
 
-当前版本：`1.1.1`
+当前版本：`1.2.0`
 
 ## 支持范围
 
 - 系统：Debian / Ubuntu、RHEL 系（CentOS Stream、Rocky、Alma、Fedora）、Alpine
-- 功能：系统查询、更新、清理；开放/关闭端口；BBR；Swap；Docker；用户密码；SSH 端口；SSH 安全检查；甲骨文云辅助工具
+- 功能：系统查询、更新、清理；开放/关闭端口；原生 BBR 与 XanMod BBRv3；Swap；Docker；用户密码；SSH 端口；SSH 安全检查；甲骨文云辅助工具
 - 防火墙：优先管理 UFW 或 firewalld。遇到已有原生 nftables 规则时只读展示，避免覆盖复杂规则。
 
 ## 安装与运行
@@ -58,8 +58,9 @@ sudo bash vps-tool.sh
 
 - SSH 换端口会先开放新端口、备份配置、运行 `sshd -t`、重启并确认监听；不会自动关闭旧端口。请保持当前会话，另开终端验证后再关闭旧端口。
 - 修改密码直接调用系统 `passwd`，脚本不接触明文密码。
-- BBR 只启用当前内核自带的 `tcp_bbr`，不会替换第三方内核。
-- DD 重装和第三方开机脚本只下载到 `/var/lib/vps-toolkit/external`，显示 SHA-256，不自动执行。
+- 原生 BBR 不替换内核；XanMod BBRv3 仅在官方支持的 x86_64 Debian/Ubuntu 版本开放，安装、更新和卸载均要求专用确认口令，不会自动重启。
+- DD 重装、R 探长和 JHB IPv6 脚本会先下载到 `/var/lib/vps-toolkit/external`，显示来源、SHA-256 与脚本开头，再要求专用确认口令才执行。
+- 甲骨文云 Root 密码登录会设置 root 密码、写入独立 SSH 配置，并通过 `sshd -t` 和有效配置回读验证；关闭密码登录前必须存在 root 公钥。
 - 日志保存在 `/var/log/vps-toolkit.log`，权限为 `0600`，不记录密码。
 - 操作前仍应制作云盘快照，并确保云厂商控制台/串口救援可用。
 
