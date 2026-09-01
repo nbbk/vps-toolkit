@@ -46,3 +46,28 @@ firewall_status() {
   case "$fw" in ufw) ufw status verbose;; firewalld) firewall-cmd --state; firewall-cmd --list-all;; nft) nft list ruleset;; *) warn "未安装防火墙";; esac
   printf '\n监听端口:\n'; ss -lntup 2>/dev/null || true
 }
+
+firewall_open_all() {
+  local fw; fw="$(ensure_firewall)"
+  warn "开放全部端口会把所有监听服务暴露到公网，包括数据库、面板和内部 API。"
+  confirm "确认开放全部 TCP/UDP 端口？" || return 0
+  case "$fw" in
+    ufw) run ufw default allow incoming; run ufw --force enable ;;
+    firewalld) run firewall-cmd --permanent --add-port=1-65535/tcp; run firewall-cmd --permanent --add-port=1-65535/udp; run firewall-cmd --reload ;;
+    nft) die "检测到原生 nftables，拒绝覆盖现有规则"; return ;;
+    *) die "没有可管理的防火墙"; return ;;
+  esac
+  ok "机内防火墙已开放全部端口；云安全组仍需单独配置"
+}
+
+firewall_restore_default() {
+  local fw; fw="$(firewall_backend)"
+  warn "恢复默认拒绝入站前，请确认当前 SSH 端口已经单独放行。"
+  confirm "确认撤销全部端口开放？" || return 0
+  case "$fw" in
+    ufw) run ufw default deny incoming ;;
+    firewalld) run firewall-cmd --permanent --remove-port=1-65535/tcp || true; run firewall-cmd --permanent --remove-port=1-65535/udp || true; run firewall-cmd --reload ;;
+    *) die "当前防火墙不支持自动恢复"; return ;;
+  esac
+  ok "已撤销全部端口开放规则"
+}

@@ -1,6 +1,6 @@
 # VPS 私人管理工具完整功能说明
 
-本文对应 `vps-toolkit 1.3.1`。所有菜单操作都需要 root 权限；推荐使用 `sudo nb` 进入。确认提示统一为 `[y/N]`：输入 `y` 或 `Y` 执行，输入 `n` 或直接回车取消。
+本文对应 `vps-toolkit 2.0.0`。所有菜单操作都需要 root 权限；推荐使用 `sudo nb` 进入。确认提示统一为 `[y/N]`：输入 `y` 或 `Y` 执行，输入 `n` 或直接回车取消。
 
 ## 一、安装、启动与文件位置
 
@@ -154,31 +154,47 @@ net.ipv4.tcp_congestion_control=bbr
 
 ### 1. 安装 Docker
 
-从发行版官方软件源安装 Docker 和 Compose 插件，并启用 Docker 服务。不会使用不透明的 `curl | sh` 安装脚本。
+从发行版官方软件源安装 Docker 和 Compose 插件，启用服务，并通过 `docker info` 验证服务。不会使用不透明的 `curl | sh` 安装脚本。
 
-### 2. 查看容器
+### 2. Docker 全局状态
 
-显示运行中及已停止容器的名称、镜像和状态。Docker 未安装时会给出提示，不再直接抛出 `command not found`。
+显示 Docker Server 信息、磁盘占用以及全部容器。Docker 未安装时只提示并返回主菜单，不会导致整个工具退出。
 
-### 3–5. 启动、停止、重启容器
+### 3. 容器管理
 
-先列出现有容器，再要求输入精确容器名。使用 Docker 原生命令操作，不修改 Compose 文件和重启策略。
+支持查看、启动、停止、重启、跟踪日志、删除和检查容器。要求输入现有精确容器名，不修改 Compose 文件。
 
-### 6. 查看日志
+### 4. 镜像管理
 
-显示容器最近 200 行日志并持续跟踪。使用 `Ctrl+C` 退出日志跟踪，不会停止容器。
+支持拉取、删除和清理悬空镜像。镜像名输入经过字符格式校验。
 
-### 7. 删除容器
+### 5. 网络管理
 
-确认后删除指定的已停止容器。不会自动删除镜像或数据卷；运行中的容器需要先停止。
+列出、创建、删除和检查 Docker 网络。自动创建类型为 bridge；默认的 bridge、host、none 网络不应删除。
 
-### 8. 清理未使用资源
+### 6. 卷管理
 
-执行 Docker 的常规 `system prune`，清理已停止容器、未使用网络和悬空镜像。默认不删除命名卷。
+列出、创建、删除、检查和清理未使用卷。卷通常包含数据库和应用数据，删除后难以恢复。
 
-### 9. Docker 信息
+### 7. 清理无用资源
 
-显示 Docker Server、存储驱动、网络、镜像、容器和运行时信息，用于排查环境问题。
+执行常规 `docker system prune`，不主动删除命名卷。
+
+### 8–9. daemon.json 与日志轮转
+
+日志轮转设置 `json-file`、单文件 10 MB、最多 3 个文件。修改前备份现有 `/etc/docker/daemon.json`，使用 jq 合并而不是覆盖；若 dockerd 支持则先验证配置，重启失败会恢复备份。第 9 项只读显示当前 JSON。
+
+### 10–11. Docker IPv6
+
+开启时设置 Docker IPv6 和私有 ULA 网段 `fd00:dead:beef::/48`，关闭时只删除这两个字段。配置变更会重启 Docker；不会替代宿主机和云网络的 IPv6 配置。
+
+### 12. Docker 备份
+
+保存容器、镜像列表和容器 inspect 元数据；可选使用临时 Alpine 容器打包全部命名卷。在线卷备份不是数据库一致性备份，MySQL/PostgreSQL 等仍应执行逻辑导出。
+
+### 13. 卸载 Docker
+
+停止并卸载 Docker 软件包，默认保留 `/var/lib/docker` 数据，避免误删卷和镜像。所有容器服务会中断。
 
 ## 六、账户与 SSH
 
@@ -311,3 +327,60 @@ net.ipv4.tcp_congestion_control=bbr
 - 不要把 VPS 密码、私钥、Token 或完整日志发布到 Issue；
 - 云安全组与机内防火墙是两层独立控制，必须同时检查；
 - 重要业务应先在测试 VPS 验证，再应用到生产实例。
+
+## 十、开放全部端口
+
+主菜单第 19 项会把机内 UFW 入站默认策略改为允许，或为 firewalld 添加 `1-65535/tcp` 和 `1-65535/udp`。这会暴露所有正在监听的数据库、缓存、面板和内部 API，强烈建议仅用于另有上游硬件防火墙或临时排障的环境。
+
+第 20 项撤销上述规则：UFW 恢复默认拒绝入站，firewalld 删除整段端口规则。撤销前必须单独放行当前 SSH 端口。两项功能都不能修改 OCI/AWS/Azure 的安全组。
+
+## 十一、系统工具箱
+
+系统工具箱集中提供主机名、密码、端口、SSH 端口、DNS、用户、Swap、时区、BBR、更新清理、运行服务、Cron、系统日志、Fail2Ban 和 SSH 安全检查。
+
+- 新建用户会创建家目录、设置密码，并加入 `sudo` 或 `wheel` 管理组；
+- 删除用户默认保留家目录，禁止删除 root；
+- DNS 修改会备份 `/etc/resolv.conf`，但可能被 Netplan、systemd-resolved 或云初始化再次覆盖；
+- Fail2Ban 从发行版软件源安装，仍需根据真实 SSH 日志路径检查 jail；
+- 服务、Cron 和日志入口默认只读。
+
+## 十二、重装系统
+
+主菜单第 18 项使用公开上游 `bin456789/reinstall`，覆盖 Debian、Ubuntu、Rocky、AlmaLinux、Oracle Linux、Fedora、CentOS、Alpine、Arch、Kali、openEuler、openSUSE 和 fnOS，并支持自定义 HTTPS DD 镜像。
+
+执行前显示上游来源、SHA-256 和脚本内容预览。重装会清空系统盘并断开 SSH，必须先备份启动卷和业务数据。Windows 镜像版本、驱动和授权差异较大，本工具不硬编码未知镜像；需要 Windows 时可在自定义 DD 中使用自己核验过的合法镜像。
+
+## 十三、测试脚本合集
+
+测试菜单包括 ChatGPT/流媒体解锁、BestTrace、MTR、SuperSpeed、NextTrace、BackTrace、NetQuality、TCPQuality、YABS、Geekbench 5、Bench、ECS 融合怪和 NodeQuality。
+
+所有测试均为第三方动态脚本：运行时下载、显示来源与 SHA-256，再经确认执行。性能测试会消耗 CPU、磁盘和大量流量，可能触发云厂商限速；生产业务高峰期不要运行。测试结果受时间、线路和上游服务策略影响。
+
+## 十四、LDNMP 建站
+
+建站模块以 Docker Compose 和官方/项目官方镜像为主，数据根目录为 `/opt/vps-web`。
+
+- LDNMP：Nginx、PHP 8.3 FPM、MySQL 8.4、Redis 7；
+- WordPress：WordPress 官方镜像与 MariaDB；
+- Halo：Halo 官方镜像；
+- Vaultwarden：项目镜像，正式使用前必须配置 HTTPS 和管理令牌；
+- 静态站点：独立 Nginx 容器和可编辑 HTML 目录；
+- 反向代理：host 网络模式，适合代理本机服务；
+- Discuz/Typecho：因缺少统一维护的官方容器镜像，工具提示使用 LDNMP 后上传官方源码，不自动采用未知镜像；
+- 备份：打包 `/opt/vps-web` 文件；数据库仍应单独做逻辑导出；
+- 更新：遍历 Compose 项目拉取镜像并重建；
+- 卸载：停止 Compose 项目并删除站点目录，命名卷可能保留。
+
+宝塔国内版使用 `https://download.bt.cn/install/install_panel.sh`，aaPanel 国际版使用 `https://www.aapanel.com/script/install_7.0_en.sh`。两者都是具有服务器高级权限的第三方面板，不建议与本工具 LDNMP 环境混装；执行前同样展示来源、SHA-256 和脚本预览。
+
+## 十五、基础工具与后台工作区
+
+基础工具菜单显示 curl、wget、sudo、socat、htop、iftop、unzip、tar、tmux、ffmpeg、btop、ranger、ncdu、fzf、vim、nano、git 以及可选终端小游戏的安装状态。支持单项、常用批量、全部和指定包操作；指定包名会经过格式校验。
+
+后台工作区使用 tmux：
+
+- 1–10 对应固定的 `workspace-1` 到 `workspace-10`；
+- 可创建、进入和删除自定义工作区；
+- 按 `Ctrl+b` 后按 `d` 可退出但保持任务运行；
+- SSH 自动驻留会在指定用户 `.profile` 写入带边界标记的配置；关闭时只删除该标记区块；
+- 工作区中的进程在 SSH 断开后继续运行，但服务器重启后不会自动恢复进程状态。

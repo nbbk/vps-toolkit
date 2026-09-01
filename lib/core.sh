@@ -12,6 +12,10 @@ warn() { say "${C_YELLOW}[提示]${C_RESET} $*"; }
 die() { say "${C_RED}[错误]${C_RESET} $*" >&2; return 1; }
 pause() { read -r -p "按回车继续..." _ || true; }
 clear_screen() { [ -t 1 ] && clear || true; }
+ui_line() { printf '%b\n' "${C_CYAN}--------------------------------------------------------${C_RESET}"; }
+ui_header() { clear_screen; ui_line; printf '%b\n' "${C_CYAN}  $*${C_RESET}"; ui_line; }
+ui_item() { printf '  %b%-3s%b %s\n' "$C_CYAN" "$1" "$C_RESET" "$2"; }
+ui_status() { if "$@" >/dev/null 2>&1; then printf '%b●%b' "$C_GREEN" "$C_RESET"; else printf '%b○%b' "$C_YELLOW" "$C_RESET"; fi; }
 on_error() { say "${C_RED}操作失败（行 $1，状态 $2）。请查看日志：$LOG_FILE${C_RESET}" >&2; }
 
 require_root() {

@@ -2,7 +2,7 @@
 
 一个面向自用 VPS 的交互式 Bash 工具，参考了 `kejilion/sh` 的功能分类，但重新实现为小型模块化代码。脚本不含遥测、不保存密码，也不默认执行网上下载的脚本。
 
-当前版本：`1.3.1`
+当前版本：`2.0.0`
 
 > 📖 **完整功能说明：** [查看各模块、每个菜单功能、适用场景、风险与回滚方式](docs/FUNCTIONS.md)
 
@@ -11,7 +11,7 @@
 ## 支持范围
 
 - 系统：Debian / Ubuntu、RHEL 系（CentOS Stream、Rocky、Alma、Fedora）、Alpine
-- 功能：系统查询、更新、清理；开放/关闭端口；原生 BBR 与 XanMod BBRv3；Swap；Docker；用户密码；SSH 端口；SSH 安全检查；甲骨文云辅助工具
+- 功能：系统查询、更新、清理；端口与防火墙；BBR；Swap；完整 Docker 管理；账户与 SSH；甲骨文云；系统工具；多系统重装；线路/性能测试；LDNMP 建站；基础工具；tmux 后台工作区
 - 防火墙：优先管理 UFW 或 firewalld。遇到已有原生 nftables 规则时只读展示，避免覆盖复杂规则。
 
 ## 安装与运行
@@ -82,8 +82,11 @@ sudo bash vps-tool.sh
 
 ```bash
 bash tests/smoke.sh
-shellcheck vps-tool.sh install.sh lib/*.sh
+bash tests/menu_contract.sh
+shellcheck -x -e SC1090,SC1091 ./*.sh lib/*.sh tests/*.sh
 ```
+
+仓库包含 GitHub Actions；每次推送和 Pull Request 都会自动运行语法、冒烟、菜单契约与 ShellCheck 检查。
 
 ## 设计边界
 

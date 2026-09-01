@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-set -Eeuo pipefail
+set -Euo pipefail
 
-VERSION="1.3.1"
+VERSION="2.0.0"
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 if command -v readlink >/dev/null 2>&1; then
   RESOLVED_PATH="$(readlink -f -- "$SCRIPT_PATH" 2>/dev/null || true)"
@@ -10,7 +10,7 @@ fi
 BASE_DIR="$(CDPATH= cd -- "$(dirname -- "$SCRIPT_PATH")" && pwd)"
 export VMT_BASE_DIR="$BASE_DIR"
 
-for module in core system firewall ssh docker oracle; do
+for module in core system firewall ssh docker oracle tools reinstall testsuite web basics workspace; do
   # shellcheck source=/dev/null
   source "$BASE_DIR/lib/$module.sh"
 done
@@ -41,6 +41,11 @@ ${C_CYAN}VPS 私人管理工具 v${VERSION}${C_RESET}  ${OS_PRETTY:-unknown}
 11. 修改 SSH 端口        12. SSH 安全检查
 13. 甲骨文云工具合集     14. 查看操作日志
 15. 检查并更新本工具      16. 卸载本工具
+17. 系统工具箱            18. 重装系统
+19. 开放全部端口          20. 撤销全部端口开放
+21. 测试脚本合集          22. LDNMP 建站
+23. 基础工具
+24. 后台工作区
  0. 退出
 --------------------------------------------------------
 EOF
@@ -62,6 +67,14 @@ EOF
       14) less "$LOG_FILE" 2>/dev/null || true ;;
       15) bash "$BASE_DIR/update.sh" ;;
       16) bash "$BASE_DIR/uninstall.sh"; exit 0 ;;
+      17) system_tools_menu ;;
+      18) reinstall_menu ;;
+      19) firewall_open_all ;;
+      20) firewall_restore_default ;;
+      21) testsuite_menu ;;
+      22) web_menu ;;
+      23) basics_menu ;;
+      24) workspace_menu ;;
       0) exit 0 ;;
       *) warn "无效选择" ;;
     esac

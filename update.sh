@@ -30,7 +30,7 @@ printf '下载包 SHA-256: '; sha256sum "$TMP/source.tar.gz"
 tar -xzf "$TMP/source.tar.gz" -C "$TMP"
 source_dir="$(find "$TMP" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
 
-required=(vps-tool.sh install.sh uninstall.sh update.sh bootstrap.sh lib/core.sh lib/system.sh lib/firewall.sh lib/ssh.sh lib/docker.sh lib/oracle.sh)
+required=(vps-tool.sh install.sh uninstall.sh update.sh bootstrap.sh lib/core.sh lib/system.sh lib/firewall.sh lib/ssh.sh lib/docker.sh lib/oracle.sh lib/tools.sh lib/reinstall.sh lib/testsuite.sh lib/web.sh lib/basics.sh lib/workspace.sh)
 for file in "${required[@]}"; do
   [ -f "$source_dir/$file" ] || { echo "更新包缺少文件：$file" >&2; exit 1; }
 done
