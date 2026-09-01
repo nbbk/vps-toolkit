@@ -8,4 +8,11 @@ install -m 0755 "$SRC/vps-tool.sh" "$DEST/vps-tool.sh"
 install -m 0755 "$SRC/uninstall.sh" "$DEST/uninstall.sh"
 install -m 0644 "$SRC"/lib/*.sh "$DEST/lib/"
 ln -sfn "$DEST/vps-tool.sh" /usr/local/bin/vps-tool
-printf '安装完成。运行：sudo vps-tool\n'
+ln -sfn "$DEST/vps-tool.sh" /usr/local/bin/nb
+if [ ! -e /usr/local/bin/n ] && [ ! -L /usr/local/bin/n ] && ! command -v n >/dev/null 2>&1; then
+  ln -s "$DEST/vps-tool.sh" /usr/local/bin/n
+  SHORTCUTS="nb、n"
+else
+  SHORTCUTS="nb（n 已被其他程序占用，未覆盖）"
+fi
+printf '安装完成。运行：sudo nb（完整命令：sudo vps-tool）\n快捷命令：%s\n' "$SHORTCUTS"

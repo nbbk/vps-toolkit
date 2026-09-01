@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-VERSION="1.0.0"
-BASE_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+VERSION="1.1.1"
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+if command -v readlink >/dev/null 2>&1; then
+  RESOLVED_PATH="$(readlink -f -- "$SCRIPT_PATH" 2>/dev/null || true)"
+  [ -n "$RESOLVED_PATH" ] && SCRIPT_PATH="$RESOLVED_PATH"
+fi
+BASE_DIR="$(CDPATH= cd -- "$(dirname -- "$SCRIPT_PATH")" && pwd)"
 export VMT_BASE_DIR="$BASE_DIR"
 
 for module in core system firewall ssh docker oracle; do

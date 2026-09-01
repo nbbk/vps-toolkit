@@ -9,7 +9,12 @@ LOG_FILE="${VMT_LOG_FILE:-/var/log/vps-toolkit.log}"
 read -r -p "确认卸载 VPS 私人管理工具？输入 UNINSTALL 继续: " answer
 [ "$answer" = UNINSTALL ] || { echo "已取消"; exit 0; }
 
-rm -f /usr/local/bin/vps-tool
+for shortcut in /usr/local/bin/vps-tool /usr/local/bin/nb /usr/local/bin/n; do
+  if [ -L "$shortcut" ]; then
+    target="$(readlink "$shortcut" 2>/dev/null || true)"
+    [ "$target" = "$DEST/vps-tool.sh" ] && rm -f -- "$shortcut"
+  fi
+done
 if [ -d "$DEST" ] && [ "$DEST" != / ] && [ "$DEST" != /opt ]; then rm -rf -- "$DEST"; fi
 
 printf '程序文件已卸载。\n'

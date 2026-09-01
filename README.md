@@ -2,6 +2,8 @@
 
 一个面向自用 VPS 的交互式 Bash 工具，参考了 `kejilion/sh` 的功能分类，但重新实现为小型模块化代码。脚本不含遥测、不保存密码，也不默认执行网上下载的脚本。
 
+当前版本：`1.1.1`
+
 ## 支持范围
 
 - 系统：Debian / Ubuntu、RHEL 系（CentOS Stream、Rocky、Alma、Fedora）、Alpine
@@ -15,6 +17,14 @@ GitHub 一行安装并启动：
 ```bash
 curl -fsSL https://raw.githubusercontent.com/nbbk/vps-toolkit/main/bootstrap.sh | sudo bash && sudo vps-tool
 ```
+
+安装后日常进入工具只需输入：
+
+```bash
+sudo nb
+```
+
+如果系统原本没有名为 `n` 的命令，也可以使用 `sudo n`。安装器绝不会覆盖已有的 `n` 命令；`sudo vps-tool` 始终可用。
 
 下载脚本和安装源码均来自同一个公开仓库。如果希望先审计，可先下载 `bootstrap.sh` 查看内容再运行。
 
@@ -33,6 +43,8 @@ sudo vps-tool
 ```bash
 sudo vps-tool --uninstall
 ```
+
+也可以使用：`sudo nb --uninstall`。
 
 默认保留备份及日志；可在卸载过程中选择一并删除。卸载程序不会擅自撤销防火墙、SSH、Swap、BBR、Docker 或系统软件包修改，避免造成失联或业务中断。
 
