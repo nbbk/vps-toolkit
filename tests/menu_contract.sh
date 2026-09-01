@@ -11,6 +11,7 @@ if [ -r /etc/os-release ]; then
   detect_os
   [ "$VERSION" = "toolkit-test" ] || { echo "/etc/os-release overwrote toolkit VERSION" >&2; exit 1; }
 fi
+# shellcheck disable=SC2016 -- matching the literal template expression in source
 grep -q 'v${TOOL_VERSION}' "$ROOT/vps-tool.sh" || { echo "menu header does not use TOOL_VERSION" >&2; exit 1; }
 grep -q 'systemctl restart ssh.socket' "$ROOT/lib/ssh.sh" || { echo "missing SSH socket activation support" >&2; exit 1; }
 
