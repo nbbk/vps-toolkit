@@ -34,3 +34,25 @@ jobs:
           version="$(vps-tool version)";
           printf "%s\n" "$version" | grep -Eq "^[0-9]+\.[0-9]+\.[0-9]+$";
           printf "signed install: PASS (%s)\n" "$version"'
+  upgrade:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Verify v2.2.0 to latest signed upgrade path
+        run: >-
+          docker run --rm
+          debian:12
+          sh -lc 'set -eu;
+          apt-get update && apt-get install -y bash curl ca-certificates tar coreutils openssl;
+          curl -fsSL https://raw.githubusercontent.com/nbbk/vps-toolkit/main/bootstrap.sh | VMT_VERSION=v2.2.0 bash;
+          before="$(vps-tool version)";
+          test "$before" = "2.2.0";
+          VMT_ASSUME_YES=1 VMT_NO_LAUNCH=1 bash /opt/vps-toolkit/update.sh;
+          after="$(vps-tool version)";
+          test "$after" != "$before";
+          test -s /opt/vps-toolkit/config/release-signing-public.pem;
+          VMT_ASSUME_YES=1 VMT_NO_LAUNCH=1 bash /opt/vps-toolkit/update.sh;
+          final="$(vps-tool version)";
+          test "$final" = "$after";
+          printf "signed upgrade: PASS (%s -> %s)\n" "$before" "$after"'

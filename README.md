@@ -144,7 +144,7 @@ bash tests/release_contract.sh
 shellcheck -x -e SC1090,SC1091 ./*.sh lib/*.sh tests/*.sh tests/fixtures/* scripts/*.sh
 ```
 
-GitHub Actions 会在 Debian 12、Ubuntu 24.04、Rocky Linux 9、Alpine 3.20 容器中检查系统识别和命令契约。每次发布资产完成签名后，还会在 Debian、Rocky Linux 和 Alpine 容器中实际运行一键安装，确认签名、摘要、安装目录、公钥和版本入口全部可用。`tests/vps_integration.sh` 用于带快照的专用一次性 VPS；仓库提供手动触发的 self-hosted runner 工作流，默认关闭，防止误伤生产机。
+GitHub Actions 会在 Debian 12、Ubuntu 24.04、Rocky Linux 9、Alpine 3.20 容器中检查系统识别和命令契约。每次发布资产完成签名后，还会在 Debian、Rocky Linux 和 Alpine 容器中实际运行一键安装，确认签名、摘要、安装目录、公钥和版本入口全部可用；Debian 容器会额外执行 `v2.2.0 → 最新版 → 再次验签检查` 的真实在线升级链路。`tests/vps_integration.sh` 用于带快照的专用一次性 VPS；仓库提供手动触发的 self-hosted runner 工作流，默认关闭，防止误伤生产机。
 
 ## 设计边界
 
