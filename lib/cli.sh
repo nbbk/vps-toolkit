@@ -24,6 +24,8 @@ EOF
 
 cli_dispatch() {
   local cmd="${1:-}"; shift || true
+  # DRY_RUN is consumed by functions in the other sourced modules.
+  # shellcheck disable=SC2034
   if [ "$cmd" = --dry-run ]; then DRY_RUN=1; export VMT_DRY_RUN=1; cmd="${1:-}"; shift || true; fi
   case "$cmd" in
     info) system_info;; doctor) compatibility_report;; security) security_audit;; report) diagnostic_report_create "${1:-}";;

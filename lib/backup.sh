@@ -188,6 +188,8 @@ transaction_undo() {
     managed_backup_file pre-undo "$source" >/dev/null || { operation_lock_release; die "撤销前备份失败，已停止"; return; }
     managed_backup_restore_force "$backup" || { operation_lock_release; return; }
   done < <(sed -n 's/^backup=//p' "$file" | awk '{line[NR]=$0} END{for(i=NR;i>=1;i--) print line[i]}')
+  # Consumed by firewall_apply in another sourced module.
+  # shellcheck disable=SC2034
   VMT_UNDOING=1
   while IFS='|' read -r action spec proto; do
     if [ -n "$action" ] && ! firewall_apply "$action" "$spec" "$proto"; then unset VMT_UNDOING; operation_lock_release; die "防火墙状态恢复失败"; return; fi

@@ -8,7 +8,7 @@ extension_enabled() { ! grep -Fxq "$1" "$EXTENSION_DISABLED_FILE" 2>/dev/null; }
 extension_list() {
   local id name _entry risk _default state
   printf '%-12s %-22s %-10s %s\n' "ID" "扩展" "风险" "状态"
-  while IFS=$'\t' read -r id name entry risk default; do
+  while IFS=$'\t' read -r id name _entry risk _default; do
     [[ "$id" = \#* || -z "$id" ]] && continue
     extension_enabled "$id" && state=enabled || state=disabled
     printf '%-12s %-22s %-10s %s\n' "$id" "$name" "$risk" "$state"

@@ -4,14 +4,14 @@ ROOT="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP="$(mktemp -d)"; trap 'rm -rf -- "$TMP"' EXIT
 export VMT_BASE_DIR="$ROOT" VMT_STATE_DIR="$TMP/state" VMT_BACKUP_DIR="$TMP/legacy" VMT_MANAGED_BACKUP_DIR="$TMP/state/managed-backups"
 export VMT_LOG_FILE="$TMP/toolkit.log" VMT_LOCK_DIR="$TMP/locks" VMT_ASSUME_YES=1
-TOOL_VERSION=2.3.0; mkdir -p "$VMT_STATE_DIR"; touch "$VMT_LOG_FILE"
+export TOOL_VERSION=2.3.0; mkdir -p "$VMT_STATE_DIR"; touch "$VMT_LOG_FILE"
 for module in core system firewall ssh docker oracle tools reinstall testsuite web basics workspace backup diagnostics security extensions baseline cli; do source "$ROOT/lib/$module.sh"; done
 
 output="$(cli_dispatch --dry-run firewall open 54321 tcp)"
 grep 'DRY-RUN.*54321' <<<"$output" >/dev/null
 output="$(cli_dispatch --dry-run firewall open 54000:54010 udp)"
 grep 'DRY-RUN.*54000:54010.*udp' <<<"$output" >/dev/null
-! cli_dispatch firewall open invalid tcp >/dev/null 2>&1
+if cli_dispatch firewall open invalid tcp >/dev/null 2>&1; then exit 1; fi
 
 DRY_RUN=0; target="$VMT_STATE_DIR/test-config"
 transaction_begin unit-test; transaction_id="$VMT_TRANSACTION_ID"
@@ -25,7 +25,7 @@ export MOCK_UFW_STATE="$TMP/mock-ufw.state"; old_path="$PATH"; PATH="$mock_bin:$
 firewall_apply open 54322 tcp >/dev/null
 grep -Fxq '54322/tcp' "$MOCK_UFW_STATE"
 transaction_undo latest >/dev/null
-! grep -Fxq '54322/tcp' "$MOCK_UFW_STATE"
+if grep -Fxq '54322/tcp' "$MOCK_UFW_STATE"; then exit 1; fi
 printf '54323/tcp\n' >"$MOCK_UFW_STATE"
 before_order="$(wc -l <"$VMT_STATE_DIR/transaction-order")"
 firewall_apply open 54323 tcp >/dev/null
@@ -33,9 +33,9 @@ firewall_apply open 54323 tcp >/dev/null
 grep -Fxq '54323/tcp' "$MOCK_UFW_STATE"
 PATH="$old_path"
 
-extension_set tests disabled >/dev/null; ! extension_enabled tests
+extension_set tests disabled >/dev/null; if extension_enabled tests; then exit 1; fi
 extension_set tests enabled >/dev/null; extension_enabled tests
-! extension_set 'tests.*' disabled >/dev/null 2>&1
+if extension_set 'tests.*' disabled >/dev/null 2>&1; then exit 1; fi
 
 archive="$TMP/export.tar.gz"
 managed_backup_export "$archive" >/dev/null
@@ -44,7 +44,7 @@ managed_backup_import "$archive" >/dev/null
 find "$MANAGED_BACKUP_DIR" -name metadata -type f -print -quit | grep -q .
 MANAGED_BACKUP_DIR="$old_managed"
 
-DRY_RUN=1
+export DRY_RUN=1
 baseline_create >/dev/null
 [ ! -e "$VMT_STATE_DIR/baseline/current.txt" ]
 managed_backup_export "$TMP/dry-run.tar.gz" >/dev/null

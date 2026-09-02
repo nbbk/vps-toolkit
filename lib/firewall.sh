@@ -42,6 +42,8 @@ firewall_rule_present() {
 
 firewall_apply() {
   local action="$1" spec="$2" proto="$3" fw label own_transaction=0 already=0
+  # Consumed by SSH rollback logic in another sourced module.
+  # shellcheck disable=SC2034
   FIREWALL_LAST_CHANGED=0
   parse_port_spec "$spec" "$proto" || { die "端口格式无效；示例 80 或 8000:8100，协议 tcp/udp"; return; }
   if [ "$DRY_RUN" = 1 ]; then printf '[DRY-RUN] 防火墙 %s %s/%s\n' "$action" "$spec" "$proto"; plan_only; return 0; fi
@@ -72,6 +74,7 @@ firewall_apply() {
     nft:*) die "检测到原生 nftables。为避免覆盖现有规则，请使用 nft 管理器人工维护"; transaction_finish failed; return 1 ;;
     *) die "没有可管理的防火墙"; transaction_finish failed; return 1 ;;
   esac
+  # shellcheck disable=SC2034
   FIREWALL_LAST_CHANGED=1
   [ "$action" = open ] && label="开放" || label="关闭"
   [ "$own_transaction" = 1 ] && transaction_finish success
