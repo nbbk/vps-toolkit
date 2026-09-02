@@ -13,7 +13,7 @@ detect_os
 [ "$PKG_FAMILY" = "${EXPECTED_FAMILY:?}" ]
 [ -n "$OS_PRETTY" ]
 [ "$(detect_init_system)" != "" ]
-cli_usage | grep 'nb doctor' >/dev/null
+cli_usage | grep 'doctor.*兼容性诊断' >/dev/null
 source_manifest_lookup reinstall | grep pinned-sha256 >/dev/null
 bash "$ROOT/vps-tool.sh" version | grep -x '2.2.0' >/dev/null
 bash "$ROOT/vps-tool.sh" --help | grep 'backup list' >/dev/null
