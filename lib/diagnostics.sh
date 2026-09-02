@@ -96,7 +96,7 @@ diagnostics_menu() {
 0. 返回
 EOF
     local c; read -r -p "请选择: " c
-    case "$c" in 1) compatibility_report;; 2) diagnostic_report_create;; 3) grep ' ERROR\|\[ERROR\]' "$LOG_FILE" 2>/dev/null | tail -n 50 || true;; 0) break;; *) warn "无效选择";; esac
+    case "$c" in 1) compatibility_report;; 2) diagnostic_report_create "";; 3) grep ' ERROR\|\[ERROR\]' "$LOG_FILE" 2>/dev/null | tail -n 50 || true;; 0) break;; *) warn "无效选择";; esac
     submenu_pause
   done
 }

@@ -83,6 +83,7 @@ detect_os() {
   # shellcheck disable=SC1091
   source /etc/os-release
   OS_ID="${ID,,}"; OS_LIKE="${ID_LIKE:-}"; OS_PRETTY="${PRETTY_NAME:-$OS_ID}"
+  # shellcheck disable=SC2034 -- consumed by other sourced modules
   OS_VERSION_ID="${VERSION_ID:-unknown}"; OS_CODENAME="${VERSION_CODENAME:-${UBUNTU_CODENAME:-unknown}}"
   case "$OS_ID $OS_LIKE" in
     *debian*|*ubuntu*) PKG_FAMILY=apt ;;

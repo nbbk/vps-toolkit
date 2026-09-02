@@ -26,7 +26,8 @@ managed_backup_list() {
 }
 
 managed_backup_restore() {
-  local id="$1" dir="$MANAGED_BACKUP_DIR/$id" meta source
+  local id="$1" dir meta source
+  dir="$MANAGED_BACKUP_DIR/$id"
   meta="$dir/metadata"; [ -f "$meta" ] || { die "备份不存在：$id"; return; }
   source="$(sed -n 's/^source=//p' "$meta")"
   case "$source" in /etc/*|/opt/*|/var/lib/*) ;; *) die "拒绝恢复到不安全路径：$source"; return;; esac
@@ -55,7 +56,7 @@ EOF
     case "$c" in
       1) managed_backup_list;;
       2) managed_backup_list; read -r -p "备份 ID: " id; managed_backup_restore "$id";;
-      3) managed_backup_export;;
+      3) managed_backup_export "";;
       4) risk_preview "清理旧备份" "删除 30 天前的托管备份" "不可恢复，建议先导出" && find "$MANAGED_BACKUP_DIR" -mindepth 1 -maxdepth 1 -type d -mtime +30 -exec rm -rf -- {} +;;
       0) break;; *) warn "无效选择";;
     esac

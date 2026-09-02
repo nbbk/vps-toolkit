@@ -12,8 +12,8 @@ detect_os
 [ "$PKG_FAMILY" = "${EXPECTED_FAMILY:?}" ]
 [ -n "$OS_PRETTY" ]
 [ "$(detect_init_system)" != "" ]
-cli_usage | grep -q 'nb doctor'
+cli_usage | grep 'nb doctor' >/dev/null
 source_manifest_lookup reinstall | grep -q pinned-sha256
 bash "$ROOT/vps-tool.sh" version | grep -qx '2.2.0'
-bash "$ROOT/vps-tool.sh" --help | grep -q 'backup list'
+bash "$ROOT/vps-tool.sh" --help | grep 'backup list' >/dev/null
 echo "distro-contract: PASS ($OS_PRETTY / $PKG_FAMILY)"
