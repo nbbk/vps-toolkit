@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -u
+state="${MOCK_UFW_STATE:?}"
+case "${1:-}" in
+  status)
+    echo 'Status: active'
+    echo 'Default: deny (incoming), allow (outgoing), disabled (routed)'
+    [ -f "$state" ] && while IFS= read -r rule; do [ -n "$rule" ] && printf '%s ALLOW Anywhere\n' "$rule"; done <"$state"
+    ;;
+  allow)
+    touch "$state"; grep -Fxq "${2:-}" "$state" 2>/dev/null || printf '%s\n' "${2:-}" >>"$state"
+    ;;
+  delete)
+    temp="${state}.tmp"; grep -Fxv "${3:-}" "$state" 2>/dev/null >"$temp" || true; mv -- "$temp" "$state"
+    ;;
+  default|--force) ;;
+  *) exit 2;;
+esac

@@ -1,0 +1,5 @@
+# id	name	entrypoint	risk	default
+oracle	甲骨文云工具合集	oracle_menu	high	enabled
+tests	测试脚本合集	testsuite_menu	medium	enabled
+web	LDNMP建站与面板	web_menu	high	enabled
+reinstall	重装系统	reinstall_menu	critical	enabled

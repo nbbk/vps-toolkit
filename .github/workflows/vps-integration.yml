@@ -1,10 +1,23 @@
 name: Disposable VPS integration
 on:
   workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type DISPOSABLE after taking a VPS snapshot'
+        required: true
+        type: string
+      mutation_tests:
+        description: 'Temporarily test SSH and firewall changes, then undo'
+        required: true
+        default: false
+        type: boolean
 jobs:
   integration:
-    if: ${{ vars.ENABLE_VPS_RUNNER_TESTS == 'true' }}
+    if: ${{ vars.ENABLE_VPS_RUNNER_TESTS == 'true' && inputs.confirm == 'DISPOSABLE' }}
     runs-on: [self-hosted, linux, vps-toolkit-disposable]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - run: sudo bash tests/vps_integration.sh
+        env:
+          VMT_TEST_SNAPSHOT_CONFIRMED: ${{ inputs.confirm }}
+          VMT_MUTATION_TESTS: ${{ inputs.mutation_tests && '1' || '0' }}

@@ -6,12 +6,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Install ShellCheck
         run: sudo apt-get update && sudo apt-get install -y shellcheck
       - name: Bash syntax
-        run: bash -n ./*.sh lib/*.sh tests/*.sh
+        run: bash -n ./*.sh lib/*.sh tests/*.sh tests/fixtures/* scripts/*.sh
       - name: Smoke tests
-        run: bash tests/smoke.sh && bash tests/menu_contract.sh && sudo bash tests/update_integration.sh
+        run: bash tests/smoke.sh && bash tests/menu_contract.sh && bash tests/safety_contract.sh && bash tests/release_contract.sh && sudo bash tests/update_integration.sh
       - name: ShellCheck
-        run: shellcheck -x -e SC1090,SC1091,SC2015 ./*.sh lib/*.sh tests/*.sh
+        run: shellcheck -x -e SC1090,SC1091,SC2015 ./*.sh lib/*.sh tests/*.sh tests/fixtures/* scripts/*.sh

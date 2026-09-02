@@ -1,8 +1,8 @@
 # VPS 私人管理工具完整功能说明
 
-本文对应 `vps-toolkit 2.2.0`。所有会修改系统的操作都需要 root 权限；推荐使用 `sudo nb` 进入。确认提示统一为 `[y/N]`：输入 `y` 或 `Y` 执行，输入 `n` 或直接回车取消。所有二级菜单执行功能后会留在当前菜单，只有选择 `0` 才返回主菜单。
+本文对应 `vps-toolkit 2.3.0`。按私人 VPS 的使用要求，工具继续整体以 root 运行；推荐使用 `sudo nb` 进入。确认提示统一为 `[y/N]`：输入 `y` 或 `Y` 执行，输入 `n` 或直接回车取消。所有二级菜单执行功能后会留在当前菜单，只有选择 `0` 才返回主菜单。
 
-## 2.2.0 管理架构
+## 2.3.0 管理架构
 
 核心管理保留系统、网络、防火墙、BBR、Swap、Docker、SSH、基础工具、后台工作区、备份、诊断和安全体检。会下载外部可执行内容的甲骨文云、测试、建站面板与重装系统统一放入“扩展中心”，避免把第三方行为与核心功能混在一起。
 
@@ -10,7 +10,9 @@
 
 ### 非交互命令
 
-`nb --help` 显示完整命令。常用入口包括 `nb info`、`nb doctor`、`nb security`、`nb report`、`nb firewall status/open/close`、`nb ssh status/port`、`nb swap set`、`nb bbr status/enable`、`nb docker status`、`nb backup list/restore/export` 和 `nb update stable/testing`。修改类命令不会绕过安全确认。
+`nb --help` 显示完整命令。常用入口包括 `nb info`、`nb doctor`、`nb security`、`nb report`、`nb firewall status/open/close`、`nb ssh status/port`、`nb swap set`、`nb bbr status/enable`、`nb docker status`、`nb backup list/diff/restore/export/import`、`nb history`、`nb undo`、`nb baseline create/check` 和 `nb update stable/testing/rollback`。修改类命令不会绕过安全确认。
+
+在命令前加入 `--dry-run` 可预演受支持的修改，例如 `sudo nb --dry-run ssh port 2222`。预演会显示计划、自动跳过确认并明确报告“未修改系统”。
 
 ### 兼容性诊断与安全体检
 
@@ -20,7 +22,7 @@
 
 ### 第三方来源与更新通道
 
-`config/sources.tsv` 是唯一的第三方可执行来源登记表。重装脚本、R 探长和 OCI Helper 使用固定提交/Release 与 SHA-256；动态脚本标记为每次审阅。稳定更新通道读取 GitHub 最新 Release，测试通道读取 `main`。正式版本变化记录在 `CHANGELOG.md`。
+`config/sources.tsv` 是唯一的第三方可执行来源登记表，`config/extensions.tsv` 管理扩展入口、风险等级和启停状态。重装脚本、R 探长和 OCI Helper 使用固定提交/Release 与 SHA-256；动态脚本标记为每次审阅。稳定更新通道只接受 GitHub 最新正式 Release 资产及其 SHA-256，测试通道读取 `main`。正式版本变化记录在 `CHANGELOG.md`。
 
 ## 一、安装、启动与文件位置
 
@@ -330,7 +332,9 @@ Ubuntu 22.10 及更新版本可能由 systemd 的 `ssh.socket` 而不是 `sshd_c
 
 ### 15. 检查并更新本工具
 
-更新器会下载 GitHub `main` 分支源码包、显示 SHA-256、检查目录结构并对全部 Shell 脚本运行 `bash -n`。确认升级后：
+稳定更新器读取最新 `vX.Y.Z` GitHub Release，下载本项目构建的版本资产和配套 SHA-256，并在安装前校验；无法取得有效正式版本或校验不通过时安全停止，不回退到 `main`。`testing` 通道才读取 `main`，用于提前测试开发版本。
+
+确认升级后：
 
 1. 备份当前 `/opt/vps-toolkit`；
 2. 安装新版本；
@@ -339,7 +343,7 @@ Ubuntu 22.10 及更新版本可能由 systemd 的 `ssh.socket` 而不是 `sshd_c
 
 从主菜单选择更新或执行 `sudo nb --update` 都会进入上述流程。交互式运行时，结果页会保留旧版本、新版本和备份位置，按回车后才进入新版，避免新菜单清屏覆盖升级结果。非交互式运行不会等待输入。升级完成后不需要退出并重新输入 `nb`；屏幕上重新出现的主菜单已经来自新版本。
 
-备份位置为 `/var/lib/vps-toolkit/update-backups/`。命令行入口为 `sudo nb --update`。
+备份位置为 `/var/lib/vps-toolkit/update-backups/`。命令行入口为 `sudo nb --update`。`sudo nb update rollback` 会显示最近一次升级备份的版本，确认后先保存当前版本，再恢复旧目录并校验版本号。更新器默认拒绝把正式安装降级到更低版本，回滚命令是明确的例外。
 
 ### 16. 卸载本工具
 
@@ -361,7 +365,7 @@ Ubuntu 22.10 及更新版本可能由 systemd 的 `ssh.socket` 而不是 `sshd_c
 
 主菜单第 19 项会把机内 UFW 入站默认策略改为允许，为 firewalld 添加 `1-65535/tcp` 和 `1-65535/udp`，或在备份完整 nftables 规则后清空规则集。这会暴露所有正在监听的数据库、缓存、面板和内部 API，强烈建议仅用于另有上游硬件防火墙或临时排障的环境。
 
-第 20 项撤销上述规则：UFW 恢复默认拒绝入站，firewalld 删除整段端口规则，nftables 载入最近一次由本工具创建的备份。撤销前必须单独放行当前 SSH 端口。两项功能都不能修改 OCI/AWS/Azure 的安全组。
+第 20 项依据 `/var/lib/vps-toolkit/firewall-open-all.state` 恢复执行前状态：UFW 恢复原入站默认策略和启用状态，firewalld 只删除第 19 项新增加的整段规则，nftables 载入该次操作前的完整规则备份。缺少状态记录或防火墙后端已经变化时会拒绝盲目恢复。撤销前仍应确认当前 SSH 端口的放行情况。两项功能都不能修改 OCI/AWS/Azure 的安全组。
 
 ## 十一、系统工具箱
 
@@ -426,3 +430,40 @@ Ubuntu 22.10 及更新版本可能由 systemd 的 `ssh.socket` 而不是 `sshd_c
 - 按 `Ctrl+b` 后按 `d` 可退出但保持任务运行；
 - SSH 自动驻留会在指定用户 `.profile` 写入带边界标记的配置；关闭时只删除该标记区块；
 - 工作区中的进程在 SSH 断开后继续运行，但服务器重启后不会自动恢复进程状态。
+
+## 十六、主菜单仪表盘与功能搜索
+
+每次显示主菜单时，顶部会汇总内存、根分区、SSH 监听端口、当前 TCP 拥塞算法、Docker 安装状态和基础告警数量。它用于快速发现磁盘接近满载等明显问题，不代替完整监控系统。
+
+主菜单第 26 项支持中文或英文关键词搜索，例如“SSH”“备份”“Docker”“基线”，返回对应的主菜单编号和命令提示。搜索只读取内置功能索引，不联网。
+
+## 十七、安全预演、操作锁与事务撤销
+
+`sudo nb --dry-run <命令>` 用于预演支持的修改操作。当前覆盖端口开关、SSH 端口、原生 BBR、Swap、备份恢复/导入/导出、状态基线和工具更新。预演不会安装依赖、写配置、重启服务或创建目标文件。
+
+会修改核心配置的操作使用全局锁。同一时间只允许一个工具会话执行修改，避免两个终端同时写 SSH、sysctl、Swap 或防火墙。系统有 `flock` 时使用文件描述符锁；没有时使用带进程检查的目录锁，异常退出留下的无效锁会在下次操作时清理。
+
+事务文件位于 `/var/lib/vps-toolkit/transactions`，记录事务 ID、模块、起止时间、工具版本、配置备份 ID、反向防火墙动作、命令失败状态和最终状态。主菜单“配置备份中心 → 操作历史”或 `sudo nb history` 可查看。
+
+`sudo nb undo latest` 撤销最近一次成功且尚未撤销的事务，也可指定事务 ID。撤销会：
+
+1. 先为当前配置再做一份备份；
+2. 按相反顺序恢复原配置和防火墙规则；
+3. 重新校验并加载 SSH、sysctl 或 Swap；
+4. 全部成功后把原事务标记为 `undone`，防止重复撤销。
+
+自动撤销目前覆盖本工具接入事务层的 SSH 端口、防火墙单条规则、BBR、网络参数和 `/swapfile`。系统升级、内核、Docker 数据、DD 重装和第三方脚本不属于通用一键撤销范围。
+
+## 十八、配置备份中心与状态基线
+
+托管备份支持列表、当前差异、校验恢复、普通导出、加密导出、安全导入和按数量清理。加密导出使用 OpenSSL AES-256-CBC 与 PBKDF2，密码由 OpenSSL 直接从终端读取。导入时会拒绝路径穿越、链接、非法 ID、不安全恢复路径、结构不完整和 SHA-256 不匹配的记录，也不会覆盖同名备份。
+
+主菜单第 25 项“系统状态基线”采集以下内容：系统身份和内核、SSH 配置哈希、本工具 sysctl 配置哈希、UID 0 与 sudo/wheel 管理员、TCP 监听地址、Cron 文件哈希、软件源哈希、Docker 容器/镜像/端口摘要，以及 UFW、firewalld 或去除计数器后的 nftables 规则。基线和漂移报告权限为 `0600`，位于 `/var/lib/vps-toolkit/baseline`。
+
+首次运行选择“创建基线”；以后选择“检查当前变化”会生成统一 diff。软件更新、容器变化或计划内配置修改也会触发变化，因此应在确认变更合法后更新基线。基线只能提示状态不同，不能判断变化一定恶意。
+
+## 十九、扩展注册表与测试层级
+
+`config/extensions.tsv` 登记扩展 ID、显示名称、入口函数、风险级别和默认状态。扩展中心可查看、启用或禁用 `oracle`、`tests`、`web`、`reinstall`；禁用后入口会拒绝启动，状态保存在 `/var/lib/vps-toolkit/extensions.disabled`。这不会删除扩展代码或已经安装的软件。
+
+自动测试分四层：Shell 语法与 ShellCheck、菜单/安全契约、Debian/Ubuntu/Rocky/Alpine 容器矩阵、一次性 VPS 集成测试。真实 SSH 和防火墙变更测试只有在仓库变量开启、运行器带 `vps-toolkit-disposable` 标签、手动输入 `DISPOSABLE` 且主动打开变更测试时才执行；操作完成后会调用事务撤销。正式运行前仍必须由操作者制作 VPS 快照。

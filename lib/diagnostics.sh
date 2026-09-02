@@ -26,6 +26,30 @@ detect_cloud() {
   else echo unknown; fi
 }
 
+dashboard_summary() {
+  local mem mem_num disk disk_num bbr docker_state ssh_ports alerts=0
+  mem_num="$(free 2>/dev/null | awk '/^Mem:/{printf "%.0f",$3*100/$2}')"; mem="${mem_num:-?}%"
+  disk="$(df -P / 2>/dev/null | awk 'NR==2{print $5}' || echo '?')"; disk="${disk:-?}"
+  bbr="$(sysctl -n net.ipv4.tcp_congestion_control 2>/dev/null || echo unknown)"
+  if command -v docker >/dev/null 2>&1; then
+    if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet docker 2>/dev/null; then docker_state=running; else docker_state=installed; fi
+  else docker_state=none; fi
+  ssh_ports="$(current_ssh_ports | paste -sd, -)"; ssh_ports="${ssh_ports:-unknown}"
+  disk_num="${disk%\%}"; [ "$disk_num" -ge 90 ] 2>/dev/null && alerts=$((alerts+1)) || true
+  [ "${mem_num:-0}" -ge 90 ] 2>/dev/null && alerts=$((alerts+1)) || true
+  printf '状态：内存 %s｜磁盘 %s｜SSH %s｜BBR %s｜Docker %s｜告警 %s\n' "$mem" "$disk" "$ssh_ports" "$bbr" "$docker_state" "$alerts"
+}
+
+feature_search() {
+  local q; read -r -p "输入功能关键词: " q; q="${q,,}"
+  printf '匹配结果：\n'
+  printf '%s\n' \
+    '1 系统信息 info' '2 系统更新 update' '4 开放端口 firewall' '7 BBR 网络加速' '8 Swap 虚拟内存' \
+    '9 Docker 容器' '11 SSH 端口' '12 SSH 安全' '13 扩展中心 甲骨文 测试 建站 重装' \
+    '18 备份 恢复 撤销 history undo' '21 诊断 doctor report' '22 安全体检 security' \
+    '23 基础工具' '24 后台工作区 tmux' '25 状态基线 baseline' | grep -i -- "$q" || warn "没有匹配功能"
+}
+
 connectivity_state() {
   local family="$1" target
   [ "$family" = 4 ] && target=1.1.1.1 || target=2606:4700:4700::1111
@@ -55,17 +79,17 @@ compatibility_report() {
     "拥塞控制" "$(sysctl -n net.ipv4.tcp_congestion_control 2>/dev/null || echo unknown)" \
     "队列算法" "$(sysctl -n net.core.default_qdisc 2>/dev/null || echo unknown)"
   printf '\n功能可用性：\n'
-  compatibility_item "软件包管理" "[[ $PKG_FAMILY =~ ^(apt|dnf|yum|apk)$ ]]"
-  compatibility_item "SSH 管理" "command -v sshd >/dev/null"
-  compatibility_item "防火墙自动管理" "[[ $(detect_firewall_backend) != none ]]"
-  compatibility_item "Docker 管理" "[[ $PKG_FAMILY != apk ]]"
-  compatibility_item "XanMod 内核" "[[ $PKG_FAMILY = apt && $(uname -m) = x86_64 ]]"
-  compatibility_item "后台工作区" "command -v tmux >/dev/null"
+  [[ "$PKG_FAMILY" =~ ^(apt|dnf|yum|apk)$ ]] && compatibility_item "软件包管理" 1 || compatibility_item "软件包管理" 0
+  command -v sshd >/dev/null && compatibility_item "SSH 管理" 1 || compatibility_item "SSH 管理" 0
+  [ "$(detect_firewall_backend)" != none ] && compatibility_item "防火墙自动管理" 1 || compatibility_item "防火墙自动管理" 0
+  [ "$PKG_FAMILY" != apk ] && compatibility_item "Docker 管理" 1 || compatibility_item "Docker 管理" 0
+  [ "$PKG_FAMILY" = apt ] && [ "$(uname -m)" = x86_64 ] && compatibility_item "XanMod 内核" 1 || compatibility_item "XanMod 内核" 0
+  command -v tmux >/dev/null && compatibility_item "后台工作区" 1 || compatibility_item "后台工作区" 0
 }
 
 compatibility_item() {
-  local name="$1" check="$2"
-  if eval "$check"; then printf '  %b●%b %s\n' "$C_GREEN" "$C_RESET" "$name"; else printf '  %b○%b %s（当前环境不可用）\n' "$C_YELLOW" "$C_RESET" "$name"; fi
+  local name="$1" available="$2"
+  if [ "$available" = 1 ]; then printf '  %b●%b %s\n' "$C_GREEN" "$C_RESET" "$name"; else printf '  %b○%b %s（当前环境不可用）\n' "$C_YELLOW" "$C_RESET" "$name"; fi
 }
 
 diagnostic_report_create() {

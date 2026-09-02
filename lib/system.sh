@@ -15,9 +15,9 @@ system_info() {
 system_update() {
   confirm "将更新全部系统软件包，继续？" || return 0
   case "$PKG_FAMILY" in
-    apt) run apt-get update; run env DEBIAN_FRONTEND=noninteractive apt-get upgrade -y ;;
-    dnf|yum) run "$PKG_FAMILY" upgrade -y ;;
-    apk) run apk update; run apk upgrade ;;
+    apt) run apt-get update && run env DEBIAN_FRONTEND=noninteractive apt-get upgrade -y || return 1 ;;
+    dnf|yum) run "$PKG_FAMILY" upgrade -y || return 1 ;;
+    apk) run apk update && run apk upgrade || return 1 ;;
   esac
   [ -f /var/run/reboot-required ] && warn "系统提示需要重启" || ok "系统更新完成"
 }
@@ -25,9 +25,9 @@ system_update() {
 system_clean() {
   confirm "将清理软件包缓存、孤立包及 14 天前的日志，继续？" || return 0
   case "$PKG_FAMILY" in
-    apt) run env DEBIAN_FRONTEND=noninteractive apt-get autoremove --purge -y; run apt-get clean ;;
-    dnf|yum) run "$PKG_FAMILY" autoremove -y; run "$PKG_FAMILY" clean all ;;
-    apk) run rm -rf /var/cache/apk/* ;;
+    apt) run env DEBIAN_FRONTEND=noninteractive apt-get autoremove --purge -y && run apt-get clean || return 1 ;;
+    dnf|yum) run "$PKG_FAMILY" autoremove -y && run "$PKG_FAMILY" clean all || return 1 ;;
+    apk) run rm -rf /var/cache/apk/* || return 1 ;;
   esac
   command -v journalctl >/dev/null && run journalctl --vacuum-time=14d || true
   ok "清理完成"
@@ -42,20 +42,36 @@ bbr_status() {
 }
 
 bbr_enable() {
+  if [ "$DRY_RUN" = 1 ]; then printf '[DRY-RUN] 写入 /etc/sysctl.d/99-vps-toolkit-bbr.conf 并执行 sysctl --system\n'; plan_only; return 0; fi
   modprobe tcp_bbr 2>/dev/null || true
   sysctl -n net.ipv4.tcp_available_congestion_control 2>/dev/null | grep -qw bbr || { die "当前内核不支持 BBR；本工具不会替换第三方内核"; return; }
-  local file=/etc/sysctl.d/99-vps-toolkit-bbr.conf tmp
-  managed_backup_file bbr "$file" >/dev/null || true
+  local file=/etc/sysctl.d/99-vps-toolkit-bbr.conf tmp backup_id
+  transaction_begin bbr || return
+  backup_id="$(managed_backup_file bbr "$file")" || { transaction_finish failed; return 1; }
   tmp="$(mktemp)"; printf 'net.core.default_qdisc=fq\nnet.ipv4.tcp_congestion_control=bbr\n' >"$tmp"
-  run install -m 0644 "$tmp" "$file"; rm -f "$tmp"; run sysctl --system
-  [ "$(sysctl -n net.ipv4.tcp_congestion_control)" = bbr ] && ok "BBR 已启用" || die "BBR 未能生效"
+  if ! run install -m 0644 "$tmp" "$file" || ! run sysctl --system; then
+    rm -f -- "$tmp"; managed_backup_restore_force "$backup_id" || true; sysctl --system >/dev/null 2>&1 || true
+    transaction_finish rolled-back; die "BBR 配置应用失败，已恢复原配置"; return
+  fi
+  rm -f -- "$tmp"
+  if [ "$(sysctl -n net.ipv4.tcp_congestion_control)" = bbr ]; then
+    transaction_finish success; ok "BBR 已启用"
+  else
+    managed_backup_restore_force "$backup_id" || true; sysctl --system >/dev/null 2>&1 || true
+    transaction_finish rolled-back; die "BBR 未能生效，已恢复原配置"
+  fi
 }
 
 bbr_disable() {
+  local backup_id
   confirm "将撤销本工具写入的 BBR 配置（不卸载内核），继续？" || return 0
-  run rm -f /etc/sysctl.d/99-vps-toolkit-bbr.conf
-  run sysctl -w net.ipv4.tcp_congestion_control=cubic || true
-  run sysctl --system
+  if [ "$DRY_RUN" = 1 ]; then printf '[DRY-RUN] 删除 /etc/sysctl.d/99-vps-toolkit-bbr.conf 并重新加载 sysctl\n'; plan_only; return 0; fi
+  transaction_begin bbr || return
+  backup_id="$(managed_backup_file bbr /etc/sysctl.d/99-vps-toolkit-bbr.conf)" || { transaction_finish failed; return 1; }
+  run rm -f /etc/sysctl.d/99-vps-toolkit-bbr.conf || { transaction_finish failed; return 1; }
+  sysctl -w net.ipv4.tcp_congestion_control=cubic >/dev/null 2>&1 || true
+  if ! run sysctl --system; then managed_backup_restore_force "$backup_id" || true; sysctl --system >/dev/null 2>&1 || true; transaction_finish rolled-back; die "撤销失败，已恢复原配置"; return; fi
+  transaction_finish success; ok "本工具的 BBR 配置已撤销"
 }
 
 bbr_menu() {
@@ -135,8 +151,12 @@ xanmod_uninstall() {
 }
 
 network_tune_enable() {
-  managed_backup_file network /etc/sysctl.d/99-vps-toolkit-network.conf >/dev/null || true
-  cat >/etc/sysctl.d/99-vps-toolkit-network.conf <<'EOF'
+  if [ "$DRY_RUN" = 1 ]; then printf '[DRY-RUN] 写入保守网络参数 /etc/sysctl.d/99-vps-toolkit-network.conf\n'; plan_only; return 0; fi
+  local target=/etc/sysctl.d/99-vps-toolkit-network.conf tmp backup_id
+  transaction_begin network || return
+  backup_id="$(managed_backup_file network "$target")" || { transaction_finish failed; return 1; }
+  tmp="$(mktemp)"
+  cat >"$tmp" <<'EOF'
 # Managed by vps-toolkit. Conservative VPS network tuning.
 net.core.default_qdisc=fq
 net.ipv4.tcp_congestion_control=bbr
@@ -150,10 +170,23 @@ net.ipv4.tcp_fin_timeout=15
 net.core.somaxconn=4096
 net.ipv4.tcp_max_syn_backlog=8192
 EOF
-  run sysctl --system; ok "网络参数优化已应用"
+  if ! run install -m 0644 "$tmp" "$target" || ! run sysctl --system; then
+    rm -f -- "$tmp"; managed_backup_restore_force "$backup_id" || true; sysctl --system >/dev/null 2>&1 || true
+    transaction_finish rolled-back; die "网络参数应用失败，已恢复原配置"; return
+  fi
+  rm -f -- "$tmp"; transaction_finish success; ok "网络参数优化已应用"
 }
 
-network_tune_disable() { confirm "撤销本工具的网络参数优化？" || return 0; rm -f /etc/sysctl.d/99-vps-toolkit-network.conf; run sysctl --system; }
+network_tune_disable() {
+  local backup_id
+  confirm "撤销本工具的网络参数优化？" || return 0
+  if [ "$DRY_RUN" = 1 ]; then printf '[DRY-RUN] 删除 /etc/sysctl.d/99-vps-toolkit-network.conf 并重新加载 sysctl\n'; plan_only; return 0; fi
+  transaction_begin network || return
+  backup_id="$(managed_backup_file network /etc/sysctl.d/99-vps-toolkit-network.conf)" || { transaction_finish failed; return 1; }
+  run rm -f /etc/sysctl.d/99-vps-toolkit-network.conf || { transaction_finish failed; return 1; }
+  if ! run sysctl --system; then managed_backup_restore_force "$backup_id" || true; sysctl --system >/dev/null 2>&1 || true; transaction_finish rolled-back; die "撤销失败，已恢复原配置"; return; fi
+  transaction_finish success; ok "网络参数优化已撤销"
+}
 
 bbr_detailed_status() {
   bbr_status; printf '\nXanMod 软件包:\n'; dpkg-query -W -f='${Package} ${Version}\n' 'linux-*xanmod*' 2>/dev/null || echo 未安装
@@ -169,29 +202,68 @@ swap_ui() {
   swap_set "$size"
 }
 
+swap_file_size_mb() {
+  [ -f /swapfile ] || { echo 0; return; }
+  local bytes; bytes="$(stat -c %s /swapfile 2>/dev/null || echo 0)"
+  echo $(( (bytes + 1048575) / 1048576 ))
+}
+
+swap_build_file() {
+  local target="$1" size="$2"
+  rm -f -- "$target"
+  if command -v fallocate >/dev/null; then run fallocate -l "${size}M" "$target" || return 1
+  else run dd if=/dev/zero of="$target" bs=1M count="$size" status=progress || return 1; fi
+  run chmod 600 "$target" && run mkswap "$target"
+}
+
+swap_restore_state() {
+  local size="$1" active="$2"
+  swapoff /swapfile 2>/dev/null || true; rm -f -- /swapfile
+  if [ "$size" -gt 0 ]; then
+    swap_build_file /swapfile "$size" || return 1
+    if [ "$active" = 1 ]; then run swapon /swapfile || return 1; fi
+  fi
+}
+
 swap_set() {
-  local size="$1" file=/swapfile
+  local size="$1" file=/swapfile temp old_size old_active=0 backup_id
   [ -e "$file" ] && [ ! -f "$file" ] && die "$file 不是普通文件"
   if swapon --noheadings --show=NAME 2>/dev/null | grep -qxv "$file"; then
     die "检测到其他 Swap；为避免误删，请先人工处理"
     return
   fi
   risk_preview "修改 Swap" "重建 $file 为 ${size}MB，并更新 /etc/fstab" "当前 /etc/fstab 会进入配置备份中心" || return 0
-  managed_backup_file swap /etc/fstab >/dev/null || true
-  swapoff "$file" 2>/dev/null || true
-  [ -f "$file" ] && cp -a "$file" "$BACKUP_DIR/swapfile.$(date +%s).bak" || true
-  run rm -f "$file"
-  if command -v fallocate >/dev/null; then run fallocate -l "${size}M" "$file"; else run dd if=/dev/zero of="$file" bs=1M count="$size" status=progress; fi
-  run chmod 600 "$file"; run mkswap "$file"; run swapon "$file"
-  grep -qE '^/swapfile[[:space:]]' /etc/fstab || printf '/swapfile none swap sw 0 0\n' >>/etc/fstab
-  ok "Swap 已设置为 ${size}MB"
+  if [ "$DRY_RUN" = 1 ]; then printf '[DRY-RUN] 创建 %sMB /swapfile，权限 0600，并更新 /etc/fstab\n' "$size"; plan_only; return 0; fi
+  transaction_begin swap || return
+  backup_id="$(managed_backup_file swap /etc/fstab)" || { transaction_finish failed; return 1; }
+  old_size="$(swap_file_size_mb)"; swapon --noheadings --show=NAME 2>/dev/null | grep -qx "$file" && old_active=1 || true
+  transaction_note "swap_undo=$old_size|$old_active"
+  temp="/swapfile.vps-toolkit-new.$$"
+  if ! swap_build_file "$temp" "$size"; then rm -f -- "$temp"; transaction_finish failed; die "新 Swap 文件创建失败，原 Swap 未改动"; return; fi
+  if [ "$old_active" = 1 ] && ! swapoff "$file"; then rm -f -- "$temp"; transaction_finish failed; die "无法停用旧 Swap，原文件未改动"; return; fi
+  if ! rm -f -- "$file" || ! mv -- "$temp" "$file" || ! run swapon "$file"; then
+    rm -f -- "$temp"; swap_restore_state "$old_size" "$old_active" || true; managed_backup_restore_force "$backup_id" || true
+    transaction_finish rolled-back; die "启用新 Swap 失败，已尝试恢复原状态"; return
+  fi
+  if ! grep -qE '^/swapfile[[:space:]]' /etc/fstab && ! printf '/swapfile none swap sw 0 0\n' >>/etc/fstab; then
+    swap_restore_state "$old_size" "$old_active" || true; managed_backup_restore_force "$backup_id" || true
+    transaction_finish rolled-back; die "更新 /etc/fstab 失败，已尝试恢复原状态"; return
+  fi
+  transaction_finish success; ok "Swap 已设置为 ${size}MB"
 }
 
 swap_remove() {
+  local old_size old_active=0 backup_id
   risk_preview "删除 Swap" "停用并删除 /swapfile，修改 /etc/fstab" "当前 /etc/fstab 会进入配置备份中心" || return 0
-  managed_backup_file swap /etc/fstab >/dev/null || true
-  swapoff /swapfile 2>/dev/null || true
-  sed -i '\|^/swapfile[[:space:]]|d' /etc/fstab
-  run rm -f /swapfile
-  ok "本工具的 Swap 已移除"
+  if [ "$DRY_RUN" = 1 ]; then printf '[DRY-RUN] swapoff 并删除 /swapfile，移除 fstab 条目\n'; plan_only; return 0; fi
+  transaction_begin swap || return
+  backup_id="$(managed_backup_file swap /etc/fstab)" || { transaction_finish failed; return 1; }
+  old_size="$(swap_file_size_mb)"; swapon --noheadings --show=NAME 2>/dev/null | grep -qx /swapfile && old_active=1 || true
+  transaction_note "swap_undo=$old_size|$old_active"
+  if [ "$old_active" = 1 ] && ! swapoff /swapfile; then transaction_finish failed; die "无法停用 /swapfile"; return; fi
+  if ! sed -i '\|^/swapfile[[:space:]]|d' /etc/fstab || ! run rm -f /swapfile; then
+    managed_backup_restore_force "$backup_id" || true; swap_restore_state "$old_size" "$old_active" || true
+    transaction_finish rolled-back; die "删除 Swap 失败，已尝试恢复原状态"; return
+  fi
+  transaction_finish success; ok "本工具的 Swap 已移除"
 }
