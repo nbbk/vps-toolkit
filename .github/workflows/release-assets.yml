@@ -18,6 +18,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.sha }}
+          fetch-depth: 0
       - name: Resolve and validate tag
         id: release
         env:
@@ -30,14 +31,12 @@ jobs:
         env:
           VMT_RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: bash scripts/build_release.sh
-      - name: Download existing checksum-protected assets
+      - name: Rebuild existing tagged release assets
         if: github.event_name == 'workflow_dispatch'
         env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ steps.release.outputs.tag }}
-        run: |
-          mkdir -p dist
-          gh release download "$RELEASE_TAG" --pattern "vps-toolkit-${RELEASE_TAG}.tar.gz" --pattern "vps-toolkit-${RELEASE_TAG}.tar.gz.sha256" --dir dist
+          VMT_RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          VMT_RELEASE_REF: ${{ steps.release.outputs.tag }}
+        run: bash scripts/build_release.sh
       - name: Sign and verify checksum manifest
         env:
           RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
