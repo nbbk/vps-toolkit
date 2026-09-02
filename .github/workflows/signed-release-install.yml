@@ -18,7 +18,7 @@ jobs:
           - image: debian:12
             prepare: apt-get update && apt-get install -y bash curl ca-certificates tar coreutils
           - image: rockylinux:9
-            prepare: dnf install -y bash curl ca-certificates tar gzip coreutils
+            prepare: dnf install -y bash ca-certificates tar gzip openssl
           - image: alpine:3.20
             prepare: apk add --no-cache bash curl ca-certificates tar coreutils
     steps:
@@ -26,11 +26,11 @@ jobs:
         run: >-
           docker run --rm
           ${{ matrix.image }}
-          bash -lc 'set -Eeuo pipefail;
+          sh -lc 'set -eu;
           ${{ matrix.prepare }};
           curl -fsSL https://raw.githubusercontent.com/nbbk/vps-toolkit/main/bootstrap.sh | bash;
           test -x /opt/vps-toolkit/vps-tool.sh;
           test -s /opt/vps-toolkit/config/release-signing-public.pem;
           version="$(vps-tool version)";
-          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]];
+          printf "%s\n" "$version" | grep -Eq "^[0-9]+\.[0-9]+\.[0-9]+$";
           printf "signed install: PASS (%s)\n" "$version"'
