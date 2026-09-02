@@ -8,6 +8,28 @@ trap 'rm -rf -- "$TMP"' EXIT
 
 [ "${EUID:-$(id -u)}" -eq 0 ] || { echo "请使用 root 运行，例如：curl ... | sudo bash" >&2; exit 1; }
 command -v curl >/dev/null 2>&1 || { echo "缺少 curl，请先安装" >&2; exit 1; }
+if ! command -v openssl >/dev/null 2>&1; then
+  echo "正在从系统软件源安装 Release 验签依赖 openssl..."
+  if command -v apt-get >/dev/null 2>&1; then
+    apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y openssl
+  elif command -v dnf >/dev/null 2>&1; then
+    dnf install -y openssl
+  elif command -v yum >/dev/null 2>&1; then
+    yum install -y openssl
+  elif command -v apk >/dev/null 2>&1; then
+    apk add --no-cache openssl
+  else
+    echo "无法自动安装 openssl，请先通过系统软件源安装后重试" >&2
+    exit 1
+  fi
+fi
+command -v openssl >/dev/null 2>&1 || { echo "openssl 安装失败，无法验证 Release 签名" >&2; exit 1; }
+
+cat >"$TMP/release-signing-public.pem" <<'RELEASE_PUBLIC_KEY'
+-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEAjHjZxf3LAYs4yjubFeka+Do3XEjt/H+7OLNsdhQx5mU=
+-----END PUBLIC KEY-----
+RELEASE_PUBLIC_KEY
 
 if [ -n "$REF" ]; then
   [[ "$REF" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "VMT_VERSION 必须是 vX.Y.Z 正式版本" >&2; exit 1; }
@@ -20,6 +42,12 @@ URL="https://github.com/${REPO}/releases/download/${REF}/${ASSET}"
 printf '安装来源：%s (%s)\n' "$REPO" "$REF"
 curl --fail --location --proto '=https' --tlsv1.2 "$URL" -o "$TMP/source.tar.gz"
 curl --fail --location --proto '=https' --tlsv1.2 "${URL}.sha256" -o "$TMP/source.sha256"
+curl --fail --location --proto '=https' --tlsv1.2 "${URL}.sha256.sig" -o "$TMP/source.sha256.sig"
+if ! openssl pkeyutl -verify -pubin -inkey "$TMP/release-signing-public.pem" -rawin -in "$TMP/source.sha256" -sigfile "$TMP/source.sha256.sig" >/dev/null 2>&1; then
+  echo "Release Ed25519 签名校验失败，安装已安全停止" >&2
+  exit 1
+fi
+echo "Release Ed25519 签名校验通过"
 EXPECTED="$(awk 'NF{print $1;exit}' "$TMP/source.sha256")"; ACTUAL="$(sha256sum "$TMP/source.tar.gz" | awk '{print $1}')"
 [[ "$EXPECTED" =~ ^[0-9a-fA-F]{64}$ && "${EXPECTED,,}" = "$ACTUAL" ]] || { echo "Release SHA-256 校验失败" >&2; exit 1; }
 echo "Release SHA-256 校验通过"

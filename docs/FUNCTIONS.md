@@ -22,7 +22,7 @@
 
 ### 第三方来源与更新通道
 
-`config/sources.tsv` 是唯一的第三方可执行来源登记表，`config/extensions.tsv` 管理扩展入口、风险等级和启停状态。重装脚本、R 探长和 OCI Helper 使用固定提交/Release 与 SHA-256；动态脚本标记为每次审阅。稳定更新通道只接受 GitHub 最新正式 Release 资产及其 SHA-256，测试通道读取 `main`。正式版本变化记录在 `CHANGELOG.md`。
+`config/sources.tsv` 是唯一的第三方可执行来源登记表，`config/extensions.tsv` 管理扩展入口、风险等级和启停状态。重装脚本、R 探长和 OCI Helper 使用固定提交/Release 与 SHA-256；动态脚本标记为每次审阅。稳定更新通道只接受 GitHub 最新正式 Release 资产，先用 `config/release-signing-public.pem` 验证 SHA-256 清单的 Ed25519 签名，再验证源码包摘要；测试通道读取 `main`。正式版本变化记录在 `CHANGELOG.md`。
 
 ## 一、安装、启动与文件位置
 
@@ -39,6 +39,7 @@
 | 操作日志 | `/var/log/vps-toolkit.log` | 权限为 `0600`，不记录密码 |
 
 脚本支持 Debian、Ubuntu、CentOS Stream、Rocky Linux、AlmaLinux、Fedora 和 Alpine。不同发行版的软件包名称、防火墙和服务管理器不同，工具会自动识别。
+一键安装器依赖 OpenSSL 验证正式发布签名；缺失时会从发行版软件源安装。手动复制目录安装的用户应确保系统已有 `openssl`，否则后续稳定版更新会安全停止并提示安装。
 
 ## 二、主菜单说明
 
@@ -332,7 +333,7 @@ Ubuntu 22.10 及更新版本可能由 systemd 的 `ssh.socket` 而不是 `sshd_c
 
 ### 15. 检查并更新本工具
 
-稳定更新器读取最新 `vX.Y.Z` GitHub Release，下载本项目构建的版本资产和配套 SHA-256，并在安装前校验；无法取得有效正式版本或校验不通过时安全停止，不回退到 `main`。`testing` 通道才读取 `main`，用于提前测试开发版本。
+稳定更新器读取最新 `vX.Y.Z` GitHub Release，下载本项目构建的版本资产、SHA-256 清单和 `.sha256.sig`，先验证 Ed25519 签名再核对源码包摘要；缺失验签工具、文件、公钥或任何校验不通过时安全停止，不回退到 `main`。`testing` 通道才读取 `main`，用于提前测试开发版本。
 
 确认升级后：
 

@@ -50,6 +50,9 @@ jobs:
           trap 'rm -f -- "$key"' EXIT
           umask 077
           printf '%s\n' "$RELEASE_SIGNING_KEY" > "$key"
+          expected_sha="$(awk 'NF{print $1;exit}' "$checksum")"
+          actual_sha="$(sha256sum "dist/vps-toolkit-${RELEASE_TAG}.tar.gz" | awk '{print $1}')"
+          [[ "$expected_sha" =~ ^[0-9a-fA-F]{64}$ && "${expected_sha,,}" = "$actual_sha" ]] || { echo "Release SHA-256 mismatch" >&2; exit 1; }
           openssl pkeyutl -sign -rawin -inkey "$key" -in "$checksum" -out "$signature"
           openssl pkeyutl -verify -pubin -inkey config/release-signing-public.pem -rawin -in "$checksum" -sigfile "$signature"
           rm -f -- "$key"

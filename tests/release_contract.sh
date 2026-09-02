@@ -9,4 +9,19 @@ archive="$TMP/vps-toolkit-v${version}.tar.gz"; checksum="$archive.sha256"
 (cd "$TMP" && sha256sum -c "$(basename "$checksum")")
 tar -tzf "$archive" | grep 'vps-toolkit/vps-tool.sh' >/dev/null
 tar -tzf "$archive" | grep 'vps-toolkit/config/extensions.tsv' >/dev/null
+tar -tzf "$archive" | grep 'vps-toolkit/config/release-signing-public.pem' >/dev/null
+
+command -v openssl >/dev/null 2>&1 || { echo 'openssl is required for release contract tests' >&2; exit 1; }
+test_key="$TMP/test-release-key.pem"; test_public="$TMP/test-release-public.pem"; signature="$checksum.sig"
+openssl genpkey -algorithm Ed25519 -out "$test_key" >/dev/null 2>&1
+openssl pkey -in "$test_key" -pubout -out "$test_public" >/dev/null 2>&1
+openssl pkeyutl -sign -rawin -inkey "$test_key" -in "$checksum" -out "$signature"
+openssl pkeyutl -verify -pubin -inkey "$test_public" -rawin -in "$checksum" -sigfile "$signature" >/dev/null
+cp "$checksum" "$TMP/tampered.sha256"; printf '#tampered\n' >> "$TMP/tampered.sha256"
+if openssl pkeyutl -verify -pubin -inkey "$test_public" -rawin -in "$TMP/tampered.sha256" -sigfile "$signature" >/dev/null 2>&1; then
+  echo 'tampered checksum manifest unexpectedly passed signature verification' >&2
+  exit 1
+fi
+grep -q 'pkeyutl -verify' "$ROOT/bootstrap.sh"
+grep -q 'pkeyutl -verify' "$ROOT/update.sh"
 echo 'release-contract: PASS'

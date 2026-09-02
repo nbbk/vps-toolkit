@@ -22,7 +22,7 @@
 - `nb report`：生成权限为 `0600` 的诊断报告，不收集密码和 SSH 私钥。
 - 配置备份中心：备份带来源路径、模块、工具版本、时间和 SHA-256，可校验恢复、导出和清理。
 - 第三方扩展清单：高风险脚本固定版本与 SHA-256；动态测试脚本每次显示来源、摘要并人工确认。
-- 稳定/测试更新通道：稳定通道读取 GitHub Release，测试通道读取 `main`。
+- 稳定/测试更新通道：稳定通道读取 GitHub Release，并用内置公钥验证 Ed25519 签名及 SHA-256；测试通道读取 `main`。
 
 ## 支持范围
 
@@ -66,6 +66,7 @@ sudo nb update stable
 如果系统原本没有名为 `n` 的命令，也可以使用 `sudo n`。安装器绝不会覆盖已有的 `n` 命令；`sudo vps-tool` 始终可用。
 
 下载脚本和安装源码均来自同一个公开仓库。如果希望先审计，可先下载 `bootstrap.sh` 查看内容再运行。
+一键安装器使用 OpenSSL 验证发布签名；系统缺少 OpenSSL 时，会从当前发行版的软件源自动安装。
 
 把整个目录上传到 VPS，然后执行：
 
@@ -105,9 +106,9 @@ sudo nb update stable
 sudo nb update testing
 ```
 
-升级器显示下载包 SHA-256，检查必需文件并对全部 Shell 脚本运行语法检查。确认后先备份当前安装；安装或验证失败时恢复旧版本。旧版本保存在 `/var/lib/vps-toolkit/update-backups/`。
+升级器先用随安装程序部署的公钥验证 Release 校验清单的 Ed25519 签名，再核对下载包 SHA-256；随后检查必需文件并对全部 Shell 脚本运行语法检查。确认后先备份当前安装；安装或验证失败时恢复旧版本。旧版本保存在 `/var/lib/vps-toolkit/update-backups/`。
 
-从 `2.3.0` 起，稳定通道只接受带 `vX.Y.Z` 标签的 GitHub Release 资产和配套 SHA-256；获取失败时安全停止，不再回退到 `main`。需要恢复最近一次升级前版本时运行：
+从 `2.3.0` 起，稳定通道只接受带 `vX.Y.Z` 标签的 GitHub Release 资产、配套 SHA-256 和 `.sha256.sig` 签名；缺少文件、验签失败或摘要不一致时都会安全停止，不再回退到 `main`。发布私钥仅保存在 GitHub Actions Secret，仓库和 VPS 中只有公钥。需要恢复最近一次升级前版本时运行：
 
 ```bash
 sudo nb update rollback

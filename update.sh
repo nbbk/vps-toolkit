@@ -124,7 +124,7 @@ else
   if [ "$CHANNEL" = stable ]; then
     release_tag="$(curl -fsSL --proto '=https' --tlsv1.2 "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null | sed -nE 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' | head -n1)"
     [[ "$release_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "无法取得有效正式版本；稳定通道已安全停止，不会回退 main" >&2; exit 1; }
-    asset_name="vps-toolkit-${release_tag}.tar.gz"; url="https://github.com/${REPO}/releases/download/${release_tag}/${asset_name}"; checksum_url="${url}.sha256"; REF="$release_tag"
+    asset_name="vps-toolkit-${release_tag}.tar.gz"; url="https://github.com/${REPO}/releases/download/${release_tag}/${asset_name}"; checksum_url="${url}.sha256"; signature_url="${checksum_url}.sig"; REF="$release_tag"
   elif [ "$CHANNEL" = testing ]; then url="https://github.com/${REPO}/archive/refs/heads/${REF}.tar.gz"
   else echo "更新通道只能是 stable 或 testing" >&2; exit 1; fi
 fi
@@ -136,7 +136,16 @@ if [ -n "${VMT_UPDATE_ARCHIVE:-}" ]; then
 else
   curl --fail --location --proto '=https' --tlsv1.2 "$url" -o "$TMP/source.tar.gz"
   if [ "$CHANNEL" = stable ]; then
+    command -v openssl >/dev/null 2>&1 || { echo "稳定版验签需要 openssl，请先安装后重试" >&2; exit 1; }
+    release_public_key="$DEST/config/release-signing-public.pem"
+    [ -s "$release_public_key" ] || { echo "缺少已安装的 Release 验签公钥：$release_public_key" >&2; exit 1; }
     curl --fail --location --proto '=https' --tlsv1.2 "$checksum_url" -o "$TMP/source.sha256"
+    curl --fail --location --proto '=https' --tlsv1.2 "$signature_url" -o "$TMP/source.sha256.sig"
+    if ! openssl pkeyutl -verify -pubin -inkey "$release_public_key" -rawin -in "$TMP/source.sha256" -sigfile "$TMP/source.sha256.sig" >/dev/null 2>&1; then
+      echo "Release Ed25519 签名校验失败，拒绝安装" >&2
+      exit 1
+    fi
+    printf 'Release Ed25519 签名校验通过。\n'
     expected_sha="$(awk 'NF{print $1;exit}' "$TMP/source.sha256")"; actual_sha="$(sha256sum "$TMP/source.tar.gz" | awk '{print $1}')"
     [[ "$expected_sha" =~ ^[0-9a-fA-F]{64}$ && "${expected_sha,,}" = "$actual_sha" ]] || { echo "Release SHA-256 校验失败，拒绝安装" >&2; exit 1; }
     printf 'Release SHA-256 校验通过。\n'
@@ -146,7 +155,7 @@ printf '[2/5] 下载包 SHA-256: '; sha256sum "$TMP/source.tar.gz"
 tar -xzf "$TMP/source.tar.gz" -C "$TMP"
 source_dir="$(find "$TMP" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
 
-required=(vps-tool.sh install.sh uninstall.sh update.sh bootstrap.sh config/sources.tsv config/extensions.tsv lib/core.sh lib/system.sh lib/firewall.sh lib/ssh.sh lib/docker.sh lib/oracle.sh lib/tools.sh lib/reinstall.sh lib/testsuite.sh lib/web.sh lib/basics.sh lib/workspace.sh lib/backup.sh lib/diagnostics.sh lib/security.sh lib/extensions.sh lib/baseline.sh lib/cli.sh)
+required=(vps-tool.sh install.sh uninstall.sh update.sh bootstrap.sh config/sources.tsv config/extensions.tsv config/release-signing-public.pem lib/core.sh lib/system.sh lib/firewall.sh lib/ssh.sh lib/docker.sh lib/oracle.sh lib/tools.sh lib/reinstall.sh lib/testsuite.sh lib/web.sh lib/basics.sh lib/workspace.sh lib/backup.sh lib/diagnostics.sh lib/security.sh lib/extensions.sh lib/baseline.sh lib/cli.sh)
 for file in "${required[@]}"; do
   [ -f "$source_dir/$file" ] || { echo "更新包缺少文件：$file" >&2; exit 1; }
 done
