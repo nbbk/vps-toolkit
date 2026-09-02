@@ -83,9 +83,9 @@ detect_os() {
   # shellcheck disable=SC1091
   source /etc/os-release
   OS_ID="${ID,,}"; OS_LIKE="${ID_LIKE:-}"; OS_PRETTY="${PRETTY_NAME:-$OS_ID}"
-  # These globals are consumed by other sourced modules.
-  # shellcheck disable=SC2034
-  OS_VERSION_ID="${VERSION_ID:-unknown}"; OS_CODENAME="${VERSION_CODENAME:-${UBUNTU_CODENAME:-unknown}}"
+  # These globals are consumed by other sourced modules and CLI subprocesses.
+  export OS_VERSION_ID="${VERSION_ID:-unknown}"
+  export OS_CODENAME="${VERSION_CODENAME:-${UBUNTU_CODENAME:-unknown}}"
   case "$OS_ID $OS_LIKE" in
     *debian*|*ubuntu*) PKG_FAMILY=apt ;;
     *rhel*|*fedora*|*centos*|*rocky*|*almalinux*) command -v dnf >/dev/null && PKG_FAMILY=dnf || PKG_FAMILY=yum ;;

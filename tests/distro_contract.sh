@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
+[ "${VMT_TEST_TRACE:-0}" = 1 ] && set -x
 ROOT="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 export VMT_BASE_DIR="$ROOT" VMT_STATE_DIR=/tmp/vmt-distro-state VMT_BACKUP_DIR=/tmp/vmt-distro-backups VMT_LOG_FILE=/tmp/vmt-distro.log
 for module in core system firewall ssh docker oracle tools reinstall testsuite web basics workspace backup diagnostics security extensions cli; do
