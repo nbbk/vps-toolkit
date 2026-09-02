@@ -13,7 +13,7 @@ detect_os
 [ -n "$OS_PRETTY" ]
 [ "$(detect_init_system)" != "" ]
 cli_usage | grep 'nb doctor' >/dev/null
-source_manifest_lookup reinstall | grep -q pinned-sha256
-bash "$ROOT/vps-tool.sh" version | grep -qx '2.2.0'
+source_manifest_lookup reinstall | grep pinned-sha256 >/dev/null
+bash "$ROOT/vps-tool.sh" version | grep -x '2.2.0' >/dev/null
 bash "$ROOT/vps-tool.sh" --help | grep 'backup list' >/dev/null
 echo "distro-contract: PASS ($OS_PRETTY / $PKG_FAMILY)"
