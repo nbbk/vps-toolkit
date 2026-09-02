@@ -2,18 +2,59 @@ name: Release assets
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag whose checksum should be signed
+        required: true
+        type: string
 permissions:
   contents: write
 jobs:
   assets:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.sha }}
+      - name: Resolve and validate tag
+        id: release
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Invalid release tag: $RELEASE_TAG" >&2; exit 1; }
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
       - name: Build deterministic source asset and checksum
+        if: github.event_name == 'release'
+        env:
+          VMT_RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: bash scripts/build_release.sh
-      - name: Upload checksum-protected assets
+      - name: Download existing checksum-protected assets
+        if: github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.event.release.tag_name }}" dist/* --clobber
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          mkdir -p dist
+          gh release download "$RELEASE_TAG" --pattern "vps-toolkit-${RELEASE_TAG}.tar.gz" --pattern "vps-toolkit-${RELEASE_TAG}.tar.gz.sha256" --dir dist
+      - name: Sign and verify checksum manifest
+        env:
+          RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          [ -n "$RELEASE_SIGNING_KEY" ] || { echo "RELEASE_SIGNING_KEY is not configured" >&2; exit 1; }
+          checksum="dist/vps-toolkit-${RELEASE_TAG}.tar.gz.sha256"
+          signature="${checksum}.sig"
+          key="$RUNNER_TEMP/vps-toolkit-release-key.pem"
+          trap 'rm -f -- "$key"' EXIT
+          umask 077
+          printf '%s\n' "$RELEASE_SIGNING_KEY" > "$key"
+          openssl pkeyutl -sign -rawin -inkey "$key" -in "$checksum" -out "$signature"
+          openssl pkeyutl -verify -pubin -inkey config/release-signing-public.pem -rawin -in "$checksum" -sigfile "$signature"
+          rm -f -- "$key"
+          trap - EXIT
+      - name: Upload signed release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ steps.release.outputs.tag }}" dist/* --clobber
