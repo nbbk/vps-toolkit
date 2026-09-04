@@ -1,8 +1,8 @@
 # VPS 私人管理工具完整功能说明
 
-本文对应 `vps-toolkit 2.3.0`。按私人 VPS 的使用要求，工具继续整体以 root 运行；推荐使用 `sudo nb` 进入。确认提示统一为 `[y/N]`：输入 `y` 或 `Y` 执行，输入 `n` 或直接回车取消。所有二级菜单执行功能后会留在当前菜单，只有选择 `0` 才返回主菜单。
+本文对应 `vps-toolkit 2.3.1`。按私人 VPS 的使用要求，工具继续整体以 root 运行；推荐使用 `sudo nb` 进入。确认提示统一为 `[y/N]`：输入 `y` 或 `Y` 执行，输入 `n` 或直接回车取消。所有二级菜单执行功能后会留在当前菜单，只有选择 `0` 才返回主菜单。
 
-## 2.3.0 管理架构
+## 2.3.1 管理架构
 
 核心管理保留系统、网络、防火墙、BBR、Swap、Docker、SSH、基础工具、后台工作区、备份、诊断和安全体检。会下载外部可执行内容的甲骨文云、测试、建站面板与重装系统统一放入“扩展中心”，避免把第三方行为与核心功能混在一起。
 
@@ -10,7 +10,7 @@
 
 ### 非交互命令
 
-`nb --help` 显示完整命令。常用入口包括 `nb info`、`nb doctor`、`nb security`、`nb report`、`nb firewall status/open/close`、`nb ssh status/port`、`nb swap set`、`nb bbr status/enable`、`nb docker status`、`nb backup list/diff/restore/export/import`、`nb history`、`nb undo`、`nb baseline create/check` 和 `nb update stable/testing/rollback`。修改类命令不会绕过安全确认。
+`nb --help` 显示完整命令。常用入口包括 `nb info`、`nb doctor`、`nb security`、`nb report`、`nb firewall status/open/close`、`nb ssh status/port`、`nb swap set`、`nb bbr status/enable/profile`、`nb docker status`、`nb backup list/diff/restore/export/import`、`nb history`、`nb undo`、`nb baseline create/check` 和 `nb update stable/testing/rollback`。修改类命令不会绕过安全确认。
 
 在命令前加入 `--dry-run` 可预演受支持的修改，例如 `sudo nb --dry-run ssh port 2222`。预演会显示计划、自动跳过确认并明确报告“未修改系统”。
 
@@ -108,20 +108,36 @@
 
 BBR 是 TCP 拥塞控制算法，主要改善高延迟、跨地区和存在轻度丢包线路的吞吐与延迟。它不能突破套餐带宽，也不能改变运营商路由。
 
-### 1. 启用当前内核原生 BBR
+### 1. 拥塞控制与默认队列算法组合
 
-加载 `tcp_bbr`，确认当前内核支持 BBR，然后写入：
+“BBR”只是 TCP 拥塞控制算法，`fq`、`fq_codel` 是队列调度算法。工具现在把两项作为明确组合显示和管理：
 
-```text
-net.core.default_qdisc=fq
-net.ipv4.tcp_congestion_control=bbr
+| 组合 | 建议用途 |
+|---|---|
+| `BBR + fq` | 代理节点、跨境线路、高吞吐服务器的默认推荐 |
+| `BBR + fq_codel` | 现代内核上的低延迟可选方案；不保证比 `fq` 更快 |
+| `CUBIC + fq_codel` | 普通网站、兼容优先或不支持 BBR 的服务器 |
+| `CUBIC + fq` | 保留 CUBIC，同时使用公平队列和 pacing |
+| 自定义拥塞算法 + `fq`/`fq_codel` | 只允许从当前内核实际报告的可用拥塞算法中选择 |
+
+`sudo nb bbr enable` 等价于选择 `BBR + fq`。命令行也可使用：
+
+```bash
+sudo nb bbr profile bbr-fq
+sudo nb bbr profile bbr-fq_codel
+sudo nb bbr profile cubic-fq_codel
+sudo nb bbr profile cubic-fq
 ```
 
-配置文件为 `/etc/sysctl.d/99-vps-toolkit-bbr.conf`。不更换内核，风险最低，适合绝大多数代理节点、网站和 Docker 服务。
+配置写入 `/etc/sysctl.d/99-vps-toolkit-zz-congestion.conf`。工具会尝试加载相应内核模块、确认拥塞算法位于内核可用列表、应用配置，并同时回读验证两项结果。失败时自动恢复原配置；成功后可使用 `sudo nb undo latest` 撤销。
 
-### 2. 撤销 BBR 配置
+`default_qdisc` 表示系统默认队列，不会覆盖管理员已通过 `tc` 单独配置的复杂网卡队列。Google BBR 文档说明现代内核已可使用内部 pacing 配合其他 qdisc，但高负载服务器使用 `fq` 通常表现更好，因此本工具仍把 `BBR + fq` 作为节点首选。
 
-删除本工具创建的原生 BBR 配置并尝试恢复 `cubic`。如果第 6 项网络优化仍然存在，它还会继续指定 BBR；要完全撤销，应同时执行第 7 项。
+技术参考：[Google BBR Quick Start](https://github.com/google/bbr/blob/master/Documentation/bbr-quick-start.md)、[Linux 内核 default_qdisc 文档](https://www.kernel.org/doc/html/latest/admin-guide/sysctl/net.html#default-qdisc)。
+
+### 2. 撤销算法组合配置
+
+删除新版组合配置及旧版 `/etc/sysctl.d/99-vps-toolkit-bbr.conf`，重新加载 sysctl，并尝试把当前运行值恢复为 `CUBIC + fq_codel`（不支持时退回 `fq`）。如果检测到 2.3.0 或更早版本生成的网络参数文件仍包含算法设置，工具会提示重新执行第 6 项完成格式迁移，或执行第 7 项撤销网络优化。
 
 ### 3. 安装 XanMod BBRv3 内核
 
@@ -141,13 +157,13 @@ net.ipv4.tcp_congestion_control=bbr
 
 ### 6. 网络参数优化
 
-写入 `/etc/sysctl.d/99-vps-toolkit-network.conf`，设置 BBR、`fq`、TCP Fast Open、MTU 探测、Keepalive、连接队列和连接结束等待时间。采用相对保守的 VPS 通用值。
+写入 `/etc/sysctl.d/99-vps-toolkit-network.conf`，设置 TCP Fast Open、MTU 探测、Keepalive、连接队列和连接结束等待时间。采用相对保守的 VPS 通用值，不再重复指定拥塞控制和队列算法，因此不会覆盖第 1 项选择的组合。旧版本生成的配置在重新执行本项后会自动迁移为新格式。
 
 推荐用途：代理节点、跨国连接、转发服务和中等并发应用。数据库专机或已经由其他调优工具管理的服务器，应避免叠加多套 sysctl 配置。
 
 ### 7. 撤销网络参数优化
 
-删除上述网络优化文件并重新加载系统全部 sysctl。不会删除第 1 项单独创建的 BBR 配置。
+删除上述网络优化文件并重新加载系统全部 sysctl。不会删除或改变第 1 项创建的算法组合配置。
 
 ### 8. 查看详细状态
 
@@ -155,10 +171,11 @@ net.ipv4.tcp_congestion_control=bbr
 
 ### 节点推荐组合
 
-- 普通 x86_64/ARM 节点：`1 + 6`；
-- 甲骨文 ARM 实例：`1 + 6`，不要安装 XanMod；
-- x86_64 Debian/Ubuntu 高延迟跨国线路：优先 `1 + 6`，效果仍不理想且可接受换内核风险时再考虑 `3 + 6`；
-- 当前已显示 `bbr + fq`：通常只需考虑第 6 项，或者保持现状。
+- 普通 x86_64/ARM 节点：在第 1 项选择 `BBR + fq`，需要额外 TCP 参数时再执行第 6 项；
+- 甲骨文 ARM 实例：选择 `BBR + fq`，不要安装 XanMod；
+- x86_64 Debian/Ubuntu 高延迟跨国线路：优先 `BBR + fq`，效果仍不理想且可接受换内核风险时再考虑第 3 项 XanMod；
+- 普通网站或 BBR 不可用：选择 `CUBIC + fq_codel`；
+- 已显示 `bbr + fq`：算法组合已经正确，无需重复执行。
 
 ## 四、修改虚拟内存
 
@@ -440,7 +457,7 @@ Ubuntu 22.10 及更新版本可能由 systemd 的 `ssh.socket` 而不是 `sshd_c
 
 ## 十七、安全预演、操作锁与事务撤销
 
-`sudo nb --dry-run <命令>` 用于预演支持的修改操作。当前覆盖端口开关、SSH 端口、原生 BBR、Swap、备份恢复/导入/导出、状态基线和工具更新。预演不会安装依赖、写配置、重启服务或创建目标文件。
+`sudo nb --dry-run <命令>` 用于预演支持的修改操作。当前覆盖端口开关、SSH 端口、BBR/队列算法组合、Swap、备份恢复/导入/导出、状态基线和工具更新。预演不会安装依赖、写配置、重启服务或创建目标文件。
 
 会修改核心配置的操作使用全局锁。同一时间只允许一个工具会话执行修改，避免两个终端同时写 SSH、sysctl、Swap 或防火墙。系统有 `flock` 时使用文件描述符锁；没有时使用带进程检查的目录锁，异常退出留下的无效锁会在下次操作时清理。
 

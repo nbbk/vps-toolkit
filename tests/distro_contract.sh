@@ -15,6 +15,6 @@ detect_os
 [ "$(detect_init_system)" != "" ]
 cli_usage | grep 'doctor.*兼容性诊断' >/dev/null
 source_manifest_lookup reinstall | grep pinned-sha256 >/dev/null
-bash "$ROOT/vps-tool.sh" version | grep -x '2.3.0' >/dev/null
+bash "$ROOT/vps-tool.sh" version | grep -x '2.3.1' >/dev/null
 bash "$ROOT/vps-tool.sh" --help | grep 'backup list' >/dev/null
 echo "distro-contract: PASS ($OS_PRETTY / $PKG_FAMILY)"

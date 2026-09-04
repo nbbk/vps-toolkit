@@ -4,7 +4,7 @@ ROOT="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP="$(mktemp -d)"; trap 'rm -rf -- "$TMP"' EXIT
 export VMT_BASE_DIR="$ROOT" VMT_STATE_DIR="$TMP/state" VMT_BACKUP_DIR="$TMP/legacy" VMT_MANAGED_BACKUP_DIR="$TMP/state/managed-backups"
 export VMT_LOG_FILE="$TMP/toolkit.log" VMT_LOCK_DIR="$TMP/locks" VMT_ASSUME_YES=1
-export TOOL_VERSION=2.3.0; mkdir -p "$VMT_STATE_DIR"; touch "$VMT_LOG_FILE"
+export TOOL_VERSION=2.3.1; mkdir -p "$VMT_STATE_DIR"; touch "$VMT_LOG_FILE"
 for module in core system firewall ssh docker oracle tools reinstall testsuite web basics workspace backup diagnostics security extensions baseline cli; do source "$ROOT/lib/$module.sh"; done
 
 output="$(cli_dispatch --dry-run firewall open 54321 tcp)"
@@ -12,6 +12,12 @@ grep 'DRY-RUN.*54321' <<<"$output" >/dev/null
 output="$(cli_dispatch --dry-run firewall open 54000:54010 udp)"
 grep 'DRY-RUN.*54000:54010.*udp' <<<"$output" >/dev/null
 if cli_dispatch firewall open invalid tcp >/dev/null 2>&1; then exit 1; fi
+DRY_RUN=1; export VMT_DRY_RUN=1
+output="$(bbr_profile_apply bbr fq 'test profile')"
+grep -q 'bbr + fq' <<<"$output"
+output="$(cli_dispatch --dry-run bbr profile cubic-fq_codel)"
+grep -q 'cubic + fq_codel' <<<"$output"
+if cli_dispatch --dry-run bbr profile invalid-profile >/dev/null 2>&1; then exit 1; fi
 
 DRY_RUN=0; target="$VMT_STATE_DIR/test-config"
 transaction_begin unit-test; transaction_id="$VMT_TRANSACTION_ID"

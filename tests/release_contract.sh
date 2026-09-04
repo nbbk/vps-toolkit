@@ -10,7 +10,7 @@ archive="$TMP/vps-toolkit-v${version}.tar.gz"; checksum="$archive.sha256"
 tar -tzf "$archive" | grep 'vps-toolkit/vps-tool.sh' >/dev/null
 tar -tzf "$archive" | grep 'vps-toolkit/config/extensions.tsv' >/dev/null
 tar -tzf "$archive" | grep 'vps-toolkit/config/release-signing-public.pem' >/dev/null
-if git -C "$ROOT" rev-parse --verify 'v2.2.0^{commit}' >/dev/null 2>&1; then
+if git -c "safe.directory=$ROOT" -C "$ROOT" rev-parse --verify 'v2.2.0^{commit}' >/dev/null 2>&1; then
   tagged_out="$TMP/tagged"
   VMT_RELEASE_TAG=v2.2.0 VMT_RELEASE_REF=v2.2.0 bash "$ROOT/scripts/build_release.sh" "$tagged_out" >/dev/null
   tar -xOf "$tagged_out/vps-toolkit-v2.2.0.tar.gz" vps-toolkit/install.sh | head -n 2 | grep -q '^set -Eeuo pipefail$'

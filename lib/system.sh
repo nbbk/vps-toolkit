@@ -34,44 +34,110 @@ system_clean() {
 }
 
 bbr_status() {
-  printf '内核: %s\n可用算法: %s\n当前算法: %s\n队列算法: %s\n' "$(uname -r)" \
+  local current_cc current_qdisc
+  current_cc="$(sysctl -n net.ipv4.tcp_congestion_control 2>/dev/null || echo unknown)"
+  current_qdisc="$(sysctl -n net.core.default_qdisc 2>/dev/null || echo unknown)"
+  printf '内核: %s\n可用拥塞算法: %s\n当前拥塞算法: %s\n默认队列算法: %s\n当前组合: %s + %s\n' "$(uname -r)" \
     "$(sysctl -n net.ipv4.tcp_available_congestion_control 2>/dev/null || echo unknown)" \
-    "$(sysctl -n net.ipv4.tcp_congestion_control 2>/dev/null || echo unknown)" \
-    "$(sysctl -n net.core.default_qdisc 2>/dev/null || echo unknown)"
+    "$current_cc" "$current_qdisc" "$current_cc" "$current_qdisc"
   lsmod 2>/dev/null | grep -q '^tcp_bbr' && ok "tcp_bbr 模块已加载" || warn "tcp_bbr 模块未加载或内置于内核"
 }
 
-bbr_enable() {
-  if [ "$DRY_RUN" = 1 ]; then printf '[DRY-RUN] 写入 /etc/sysctl.d/99-vps-toolkit-bbr.conf 并执行 sysctl --system\n'; plan_only; return 0; fi
-  modprobe tcp_bbr 2>/dev/null || true
-  sysctl -n net.ipv4.tcp_available_congestion_control 2>/dev/null | grep -qw bbr || { die "当前内核不支持 BBR；本工具不会替换第三方内核"; return; }
-  local file=/etc/sysctl.d/99-vps-toolkit-bbr.conf tmp backup_id
+BBR_PROFILE_FILE=/etc/sysctl.d/99-vps-toolkit-zz-congestion.conf
+
+bbr_profile_apply() {
+  local congestion="${1:-}" qdisc="${2:-}" label="${3:-${1:-} + ${2:-}}"
+  local file="$BBR_PROFILE_FILE" tmp backup_id current_cc current_qdisc actual_cc actual_qdisc
+  [[ "$congestion" =~ ^[a-z0-9_]+$ ]] || { die "拥塞算法名称无效"; return 1; }
+  case "$qdisc" in fq|fq_codel) ;; *) die "队列算法仅允许 fq 或 fq_codel"; return 1;; esac
+  current_cc="$(sysctl -n net.ipv4.tcp_congestion_control 2>/dev/null || echo unknown)"
+  current_qdisc="$(sysctl -n net.core.default_qdisc 2>/dev/null || echo unknown)"
+  risk_preview "切换 TCP 算法组合" "${current_cc} + ${current_qdisc} → ${congestion} + ${qdisc}"$'\n'"配置：$file" "回滚方式：配置备份中心或 nb undo latest" || return 0
+  if plan_only; then printf '[DRY-RUN] 将验证内核支持并应用 %s + %s；不会修改现有网卡的自定义 tc 规则。\n' "$congestion" "$qdisc"; return 0; fi
+  [ "$congestion" != bbr ] || modprobe tcp_bbr 2>/dev/null || true
+  modprobe "sch_${qdisc}" 2>/dev/null || true
+  sysctl -n net.ipv4.tcp_available_congestion_control 2>/dev/null | tr ' ' '\n' | grep -Fxq "$congestion" || { die "当前内核不支持拥塞算法：$congestion"; return 1; }
   transaction_begin bbr || return
   backup_id="$(managed_backup_file bbr "$file")" || { transaction_finish failed; return 1; }
-  tmp="$(mktemp)"; printf 'net.core.default_qdisc=fq\nnet.ipv4.tcp_congestion_control=bbr\n' >"$tmp"
+  tmp="$(mktemp)"
+  printf '# Managed by vps-toolkit: %s\nnet.core.default_qdisc=%s\nnet.ipv4.tcp_congestion_control=%s\n' "$label" "$qdisc" "$congestion" >"$tmp"
   if ! run install -m 0644 "$tmp" "$file" || ! run sysctl --system; then
     rm -f -- "$tmp"; managed_backup_restore_force "$backup_id" || true; sysctl --system >/dev/null 2>&1 || true
-    transaction_finish rolled-back; die "BBR 配置应用失败，已恢复原配置"; return
+    transaction_finish rolled-back; die "算法组合应用失败，已恢复原配置"; return 1
   fi
   rm -f -- "$tmp"
-  if [ "$(sysctl -n net.ipv4.tcp_congestion_control)" = bbr ]; then
-    transaction_finish success; ok "BBR 已启用"
+  actual_cc="$(sysctl -n net.ipv4.tcp_congestion_control 2>/dev/null || true)"
+  actual_qdisc="$(sysctl -n net.core.default_qdisc 2>/dev/null || true)"
+  if [ "$actual_cc" = "$congestion" ] && [ "$actual_qdisc" = "$qdisc" ]; then
+    transaction_note "congestion=$congestion qdisc=$qdisc"
+    transaction_finish success; ok "算法组合已启用：${congestion} + ${qdisc}"
   else
     managed_backup_restore_force "$backup_id" || true; sysctl --system >/dev/null 2>&1 || true
-    transaction_finish rolled-back; die "BBR 未能生效，已恢复原配置"
+    transaction_finish rolled-back; die "算法组合未完整生效（实际：${actual_cc:-unknown} + ${actual_qdisc:-unknown}），已恢复原配置"; return 1
   fi
 }
 
+bbr_enable() { bbr_profile_apply bbr fq "原生 BBR + fq（节点推荐）"; }
+
+bbr_custom_profile_ui() {
+  local qdisc="$1" congestion available
+  [ "$DRY_RUN" = 1 ] && available="bbr cubic reno" || available="$(sysctl -n net.ipv4.tcp_available_congestion_control 2>/dev/null || true)"
+  printf '内核当前可用拥塞算法：%s\n' "${available:-无法读取}"
+  read -r -p "请输入拥塞算法名称: " congestion
+  [[ "$congestion" =~ ^[a-z0-9_]+$ ]] || { die "算法名称无效"; return; }
+  if [ "$DRY_RUN" != 1 ]; then
+    printf '%s\n' "$available" | tr ' ' '\n' | grep -Fxq "$congestion" || { die "该算法不在内核可用列表中"; return; }
+  fi
+  bbr_profile_apply "$congestion" "$qdisc" "自定义 ${congestion} + ${qdisc}"
+}
+
+bbr_profile_menu() {
+  while true; do
+    clear_screen; bbr_status
+    cat <<'EOF'
+
+拥塞控制 + 队列算法组合
+--------------------------------------------------------
+1. BBR + fq（节点推荐）       2. BBR + fq_codel（可选）
+3. CUBIC + fq_codel（兼容）  4. CUBIC + fq（吞吐兼容）
+5. 自定义拥塞算法 + fq        6. 自定义拥塞算法 + fq_codel
+0. 返回
+--------------------------------------------------------
+说明：BBRv3 内核启用后仍选择 BBR + fq；算法名同为 bbr。
+EOF
+    local c; read -r -p "请选择: " c
+    case "$c" in
+      1) bbr_profile_apply bbr fq "原生 BBR + fq（节点推荐）";;
+      2) bbr_profile_apply bbr fq_codel "原生 BBR + fq_codel";;
+      3) bbr_profile_apply cubic fq_codel "CUBIC + fq_codel（兼容）";;
+      4) bbr_profile_apply cubic fq "CUBIC + fq";;
+      5) bbr_custom_profile_ui fq;; 6) bbr_custom_profile_ui fq_codel;;
+      0) break;; *) warn "无效选择";;
+    esac
+    submenu_pause
+  done
+}
+
 bbr_disable() {
-  local backup_id
-  confirm "将撤销本工具写入的 BBR 配置（不卸载内核），继续？" || return 0
-  if [ "$DRY_RUN" = 1 ]; then printf '[DRY-RUN] 删除 /etc/sysctl.d/99-vps-toolkit-bbr.conf 并重新加载 sysctl\n'; plan_only; return 0; fi
+  local profile_backup legacy_backup actual_cc actual_qdisc
+  confirm "将撤销本工具写入的算法组合配置（不卸载内核），继续？" || return 0
+  if [ "$DRY_RUN" = 1 ]; then printf '[DRY-RUN] 删除 %s 和旧版 BBR 配置并重新加载 sysctl\n' "$BBR_PROFILE_FILE"; plan_only; return 0; fi
   transaction_begin bbr || return
-  backup_id="$(managed_backup_file bbr /etc/sysctl.d/99-vps-toolkit-bbr.conf)" || { transaction_finish failed; return 1; }
-  run rm -f /etc/sysctl.d/99-vps-toolkit-bbr.conf || { transaction_finish failed; return 1; }
+  profile_backup="$(managed_backup_file bbr "$BBR_PROFILE_FILE")" || { transaction_finish failed; return 1; }
+  legacy_backup="$(managed_backup_file bbr /etc/sysctl.d/99-vps-toolkit-bbr.conf)" || { transaction_finish failed; return 1; }
+  run rm -f "$BBR_PROFILE_FILE" /etc/sysctl.d/99-vps-toolkit-bbr.conf || { transaction_finish failed; return 1; }
+  if ! run sysctl --system; then
+    managed_backup_restore_force "$legacy_backup" || true; managed_backup_restore_force "$profile_backup" || true; sysctl --system >/dev/null 2>&1 || true
+    transaction_finish rolled-back; die "撤销失败，已恢复原配置"; return 1
+  fi
   sysctl -w net.ipv4.tcp_congestion_control=cubic >/dev/null 2>&1 || true
-  if ! run sysctl --system; then managed_backup_restore_force "$backup_id" || true; sysctl --system >/dev/null 2>&1 || true; transaction_finish rolled-back; die "撤销失败，已恢复原配置"; return; fi
-  transaction_finish success; ok "本工具的 BBR 配置已撤销"
+  sysctl -w net.core.default_qdisc=fq_codel >/dev/null 2>&1 || sysctl -w net.core.default_qdisc=fq >/dev/null 2>&1 || true
+  actual_cc="$(sysctl -n net.ipv4.tcp_congestion_control 2>/dev/null || echo unknown)"
+  actual_qdisc="$(sysctl -n net.core.default_qdisc 2>/dev/null || echo unknown)"
+  transaction_finish success; ok "算法组合配置已撤销；当前：${actual_cc} + ${actual_qdisc}"
+  if grep -Eq '^[[:space:]]*net\.(core\.default_qdisc|ipv4\.tcp_congestion_control)[[:space:]]*=' /etc/sysctl.d/99-vps-toolkit-network.conf 2>/dev/null; then
+    warn "检测到旧版网络参数配置仍指定算法；如需完全撤销，请先重新执行 6 迁移配置，或选择 7 撤销网络优化"
+  fi
 }
 
 bbr_menu() {
@@ -81,17 +147,17 @@ bbr_menu() {
 
 BBR 管理
 --------------------------------------------------------
-1. 启用当前内核原生 BBR       2. 撤销 BBR 配置
+1. 拥塞/队列算法组合          2. 撤销算法组合配置
 3. 安装 XanMod BBRv3 内核     4. 更新 XanMod BBRv3 内核
 5. 卸载 XanMod BBRv3 内核     6. 网络参数优化
 7. 撤销网络参数优化           8. 查看详细状态
 0. 返回
 --------------------------------------------------------
-说明：BBRv3 内核管理仅支持 x86_64 Debian 12+/Ubuntu 24.04+。
+说明：节点优先选择 BBR + fq；BBRv3 内核管理仅支持 x86_64 Debian 12+/Ubuntu 24.04+。
 EOF
   read -r -p "请选择: " c
   case "$c" in
-    1) bbr_enable;; 2) bbr_disable;; 3) xanmod_install install;; 4) xanmod_install update;;
+    1) bbr_profile_menu;; 2) bbr_disable;; 3) xanmod_install install;; 4) xanmod_install update;;
     5) xanmod_uninstall;; 6) network_tune_enable;; 7) network_tune_disable;; 8) bbr_detailed_status;; 0) break;; *) warn "无效选择";;
   esac
   submenu_pause
@@ -138,7 +204,8 @@ xanmod_install() {
   confirm "将${verb}第三方 XanMod 内核；可能导致无法启动，请先做云盘快照。继续？" || return 0
   xanmod_add_repo || return; pkg="$(xanmod_package)" || { die "未找到适配 CPU 的 XanMod 软件包"; return; }
   if [ "$action" = update ]; then run apt-get install -y --only-upgrade "$pkg" || run apt-get install -y "$pkg"; else run apt-get install -y "$pkg"; fi
-  bbr_enable; ok "XanMod 处理完成：$pkg。请确认控制台救援可用后手动重启"
+  bbr_enable || { warn "XanMod 已处理，但 BBR + fq 尚未启用；请重启进入新内核后在算法组合菜单重试"; return 1; }
+  ok "XanMod 处理完成：$pkg。请确认控制台救援可用后手动重启"
 }
 
 xanmod_uninstall() {
@@ -158,8 +225,6 @@ network_tune_enable() {
   tmp="$(mktemp)"
   cat >"$tmp" <<'EOF'
 # Managed by vps-toolkit. Conservative VPS network tuning.
-net.core.default_qdisc=fq
-net.ipv4.tcp_congestion_control=bbr
 net.ipv4.tcp_fastopen=3
 net.ipv4.tcp_mtu_probing=1
 net.ipv4.tcp_slow_start_after_idle=0
@@ -174,7 +239,7 @@ EOF
     rm -f -- "$tmp"; managed_backup_restore_force "$backup_id" || true; sysctl --system >/dev/null 2>&1 || true
     transaction_finish rolled-back; die "网络参数应用失败，已恢复原配置"; return
   fi
-  rm -f -- "$tmp"; transaction_finish success; ok "网络参数优化已应用"
+  rm -f -- "$tmp"; transaction_finish success; ok "网络参数优化已应用；当前拥塞/队列算法组合保持不变"
 }
 
 network_tune_disable() {

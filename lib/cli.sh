@@ -10,7 +10,8 @@ cli_usage() {
   firewall status|open|close|open-all|restore-all  防火墙操作
   ssh status|port <端口>       SSH 状态或修改端口
   swap set <MB>|remove         设置或删除 Swap
-  bbr status|enable|disable    原生 BBR 管理
+  bbr status|enable|disable    BBR 管理（enable = BBR + fq）
+  bbr profile <组合>           bbr-fq|bbr-fq_codel|cubic-fq|cubic-fq_codel
   docker status                Docker 状态
   backup list|diff|restore|export|import  备份中心
   history                      操作历史
@@ -38,7 +39,15 @@ cli_dispatch() {
     esac;;
     ssh) case "${1:-}" in status) current_ssh_ports;; port) valid_port "${2:-}" || { die "端口无效"; return 2; }; change_ssh_port "$2";; *) cli_usage; return 2;; esac;;
     swap) case "${1:-}" in set) valid_size_mb "${2:-}" || { die "Swap 大小无效"; return 2; }; swap_set "$2";; remove) swap_remove;; *) cli_usage; return 2;; esac;;
-    bbr) case "${1:-}" in status) bbr_status;; enable) bbr_enable;; disable) bbr_disable;; *) cli_usage; return 2;; esac;;
+    bbr) case "${1:-}" in
+      status) bbr_status;; enable) bbr_enable;; disable) bbr_disable;;
+      profile) case "${2:-}" in
+        bbr-fq) bbr_profile_apply bbr fq "原生 BBR + fq（节点推荐）";;
+        bbr-fq_codel) bbr_profile_apply bbr fq_codel "原生 BBR + fq_codel";;
+        cubic-fq) bbr_profile_apply cubic fq "CUBIC + fq";;
+        cubic-fq_codel) bbr_profile_apply cubic fq_codel "CUBIC + fq_codel（兼容）";;
+        *) cli_usage; return 2;; esac;;
+      *) cli_usage; return 2;; esac;;
     docker) if [ "${1:-}" = status ]; then docker_info_summary; else cli_usage; return 2; fi;;
     backup) case "${1:-}" in list) managed_backup_list;; diff) [ -n "${2:-}" ] || return 2; managed_backup_diff "$2";; restore) [ -n "${2:-}" ] || return 2; managed_backup_restore "$2";; export) managed_backup_export "${2:-}";; import) [ -n "${2:-}" ] || return 2; managed_backup_import "$2";; *) cli_usage; return 2;; esac;;
     history) transaction_history;; undo) transaction_undo "${1:-latest}";;

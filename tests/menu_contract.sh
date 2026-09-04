@@ -23,6 +23,7 @@ required_functions=(
   ip_family_menu ip_family_prefer ip_family_only4 ip_family_only6 ip_family_dual
   compatibility_report diagnostic_report_create security_audit backup_center_menu extensions_menu cli_dispatch
   baseline_create baseline_check transaction_history transaction_undo managed_backup_diff
+  bbr_profile_apply bbr_profile_menu bbr_custom_profile_ui
 )
 for fn in "${required_functions[@]}"; do declare -F "$fn" >/dev/null || { echo "missing function: $fn" >&2; exit 1; }; done
 
@@ -30,7 +31,7 @@ for module in core system firewall ssh docker oracle tools reinstall testsuite w
 for file in lib/core.sh lib/system.sh lib/firewall.sh lib/ssh.sh lib/docker.sh lib/oracle.sh lib/tools.sh lib/reinstall.sh lib/testsuite.sh lib/web.sh lib/basics.sh lib/workspace.sh lib/backup.sh lib/diagnostics.sh lib/security.sh lib/extensions.sh lib/baseline.sh lib/cli.sh; do grep -q "$file" "$ROOT/update.sh"; done
 if grep -q "trap .* ERR" "$ROOT/vps-tool.sh"; then echo "unexpected global ERR trap" >&2; exit 1; fi
 for file in system docker oracle tools reinstall testsuite web basics workspace; do grep -q 'while true; do' "$ROOT/lib/$file.sh" || { echo "submenu is not persistent: $file" >&2; exit 1; }; done
-for menu in bbr_menu docker_menu oracle_menu system_tools_menu reinstall_menu testsuite_menu web_menu basics_menu; do "$menu" <<<"0" >/dev/null; done
+for menu in bbr_menu bbr_profile_menu docker_menu oracle_menu system_tools_menu reinstall_menu testsuite_menu web_menu basics_menu; do "$menu" <<<"0" >/dev/null; done
 
 export WEB_ROOT=/; if web_safe_root; then exit 1; fi
 export WEB_ROOT=/opt/vps-web; web_safe_root
