@@ -9,18 +9,27 @@ permissions:
 jobs:
   install:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
         include:
           - image: debian:12
+            runner: ubuntu-latest
             prepare: apt-get update && apt-get install -y bash curl ca-certificates tar coreutils
           - image: rockylinux:9
+            runner: ubuntu-latest
             prepare: dnf install -y bash ca-certificates tar gzip openssl
           - image: alpine:3.20
+            runner: ubuntu-latest
             prepare: apk add --no-cache bash curl ca-certificates tar coreutils
+          - image: ubuntu:20.04
+            runner: ubuntu-latest
+            prepare: apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y bash curl ca-certificates tar coreutils openssl
+          - image: ubuntu:20.04
+            runner: ubuntu-24.04-arm
+            prepare: apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y bash curl ca-certificates tar coreutils openssl
     steps:
       - name: Verify one-line signed installation on ${{ matrix.image }}
         run: >-
@@ -31,6 +40,7 @@ jobs:
           curl -fsSL https://raw.githubusercontent.com/nbbk/vps-toolkit/main/bootstrap.sh | bash;
           test -x /opt/vps-toolkit/vps-tool.sh;
           test -s /opt/vps-toolkit/config/release-signing-public.pem;
+          VMT_ASSUME_YES=1 VMT_NO_LAUNCH=1 VMT_FORCE_UPDATE=1 bash /opt/vps-toolkit/update.sh;
           version="$(vps-tool version)";
           printf "%s\n" "$version" | grep -Eq "^[0-9]+\.[0-9]+\.[0-9]+$";
           printf "signed install: PASS (%s)\n" "$version"'

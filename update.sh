@@ -46,6 +46,54 @@ else
 fi
 printf 'pid=%s action=update started=%s\n' "$$" "$(date -Is)" >"$UPDATE_LOCK_OWNER"
 
+verify_release_signature() {
+  local public_key="$1" checksum="$2" signature="$3" error_log="$TMP/verify-error.log"
+  if [[ "$(openssl pkeyutl -help 2>&1 || true)" == *-rawin* ]]; then
+    if openssl pkeyutl -verify -pubin -inkey "$public_key" -rawin -in "$checksum" -sigfile "$signature" >"$error_log" 2>&1; then
+      return 0
+    fi
+    echo "OpenSSL 验签失败：$(cat "$error_log")" >&2
+    return 1
+  fi
+  echo "当前 $(openssl version) 不支持 pkeyutl -rawin，使用 Python Ed25519 验签" >&2
+  local python_bin="/usr/bin/python3"
+  [ -x "$python_bin" ] || python_bin="$(command -v python3 || true)"
+  if [ -z "$python_bin" ] || ! "$python_bin" -c 'import cryptography' >/dev/null 2>&1; then
+    echo "缺少兼容验签依赖，正在从系统软件源安装 python3-cryptography..." >&2
+    if command -v apt-get >/dev/null 2>&1; then
+      apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y python3-cryptography
+    elif command -v dnf >/dev/null 2>&1; then
+      dnf install -y python3-cryptography
+    elif command -v yum >/dev/null 2>&1; then
+      yum install -y python3-cryptography
+    elif command -v apk >/dev/null 2>&1; then
+      apk add --no-cache py3-cryptography
+    else
+      echo "无法自动安装 python3-cryptography，安装已安全停止" >&2
+      return 1
+    fi || return 1
+  fi
+  [ -x /usr/bin/python3 ] && python_bin=/usr/bin/python3
+  "$python_bin" - "$public_key" "$checksum" "$signature" <<'PY'
+import sys
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+with open(sys.argv[1], 'rb') as f:
+    key = serialization.load_pem_public_key(f.read())
+if not isinstance(key, Ed25519PublicKey):
+    raise SystemExit('Release 公钥不是 Ed25519')
+with open(sys.argv[2], 'rb') as f:
+    message = f.read()
+with open(sys.argv[3], 'rb') as f:
+    signature = f.read()
+try:
+    key.verify(signature, message)
+except Exception as exc:
+    raise SystemExit('Release Ed25519 签名不匹配：' + str(exc))
+PY
+}
+
 version_from_script() {
   sed -nE 's/^VERSION="([0-9]+\.[0-9]+\.[0-9]+)"$/\1/p' "$1" | head -n 1
 }
@@ -141,7 +189,7 @@ else
     [ -s "$release_public_key" ] || { echo "缺少已安装的 Release 验签公钥：$release_public_key" >&2; exit 1; }
     curl --fail --location --proto '=https' --tlsv1.2 "$checksum_url" -o "$TMP/source.sha256"
     curl --fail --location --proto '=https' --tlsv1.2 "$signature_url" -o "$TMP/source.sha256.sig"
-    if ! openssl pkeyutl -verify -pubin -inkey "$release_public_key" -rawin -in "$TMP/source.sha256" -sigfile "$TMP/source.sha256.sig" >/dev/null 2>&1; then
+    if ! verify_release_signature "$release_public_key" "$TMP/source.sha256" "$TMP/source.sha256.sig"; then
       echo "Release Ed25519 签名校验失败，拒绝安装" >&2
       exit 1
     fi
