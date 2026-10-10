@@ -1,5 +1,9 @@
 # 更新日志
 
+## 2.3.3
+
+- 兼容 Ubuntu 20.04 系统仓库提供的旧版 `python3-cryptography` API，并在常规 CI 中加入旧版验签回归测试。
+
 ## 2.3.2
 
 - 修复 Ubuntu 20.04 等旧版 OpenSSL 不支持 `pkeyutl -rawin` 时的一键安装与稳定更新；使用发行版提供的 Python Ed25519 实现验签，仍要求签名与 SHA-256 都通过。

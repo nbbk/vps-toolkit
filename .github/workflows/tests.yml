@@ -15,3 +15,11 @@ jobs:
         run: bash tests/smoke.sh && bash tests/menu_contract.sh && bash tests/safety_contract.sh && bash tests/release_contract.sh && sudo bash tests/update_integration.sh
       - name: ShellCheck
         run: shellcheck -x -e SC1090,SC1091,SC2015 ./*.sh lib/*.sh tests/*.sh tests/fixtures/* scripts/*.sh
+  legacy-ed25519:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Verify signatures on Ubuntu 20.04 OpenSSL and cryptography
+        run: >-
+          docker run --rm -v "$PWD:/src:ro" ubuntu:20.04
+          sh -lc 'apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y bash openssl python3-cryptography && bash /src/tests/legacy_release_verify.sh'

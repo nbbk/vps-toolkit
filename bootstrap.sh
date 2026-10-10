@@ -55,11 +55,12 @@ verify_release_signature() {
   [ -x /usr/bin/python3 ] && python_bin=/usr/bin/python3
   "$python_bin" - "$public_key" "$checksum" "$signature" <<'PY'
 import sys
+from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 with open(sys.argv[1], 'rb') as f:
-    key = serialization.load_pem_public_key(f.read())
+    key = serialization.load_pem_public_key(f.read(), backend=default_backend())
 if not isinstance(key, Ed25519PublicKey):
     raise SystemExit('Release 公钥不是 Ed25519')
 with open(sys.argv[2], 'rb') as f:
