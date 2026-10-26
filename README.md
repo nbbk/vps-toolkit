@@ -139,6 +139,7 @@ sudo bash vps-tool.sh
 ```bash
 bash tests/smoke.sh
 bash tests/menu_contract.sh
+bash tests/testsuite_contract.sh
 bash tests/safety_contract.sh
 bash tests/distro_contract.sh
 bash tests/release_contract.sh

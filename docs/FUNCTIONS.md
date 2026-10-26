@@ -411,11 +411,11 @@ Ubuntu 22.10 及更新版本可能由 systemd 的 `ssh.socket` 而不是 `sshd_c
 
 ## 十三、测试脚本合集
 
-测试菜单包括 Region/yeahwu 流媒体解锁、多目标 NextTrace 路由、MTR、SuperSpeed、BackTrace、NetQuality、TCPQuality、YABS、Geekbench 5、Bench、ECS 融合怪和 NodeQuality。14 号是 NextTrace 安装器，只安装工具，不自动执行路由测试。YABS 保留 `-i -5` 参数，即跳过 iperf 并使用 Geekbench 5。
+测试菜单包括 Region/yeahwu 流媒体解锁、多目标 NextTrace 路由、MTR、SuperSpeed、BackTrace、NetQuality、TCPQuality、YABS、Geekbench 5、Bench、ECS 融合怪和 NodeQuality。移除原 14 号仅安装、不执行路由测试的 NextTrace 安装器入口；保留原 11 号多目标 NextTrace 测试。YABS 保留 `-i -5` 参数，即跳过 iperf 并使用 Geekbench 5。
 
-独立 ChatGPT 检测因可将 HTTP 403 错判为支持访问而移除。保留脚本仍存在上游接口、架构或依赖限制，详见 [逐项审计与验证边界](FEATURE_AUDIT.md)；下载成功不代表功能实测通过。下载失败、空内容、Bash 语法错误会在执行前停止，第三方非零退出码会明确显示。
+独立 ChatGPT 检测因可将 HTTP 403 错判为支持访问而移除。保留脚本仍存在上游接口、架构或依赖限制，详见 [逐项审计与验证边界](FEATURE_AUDIT.md)；下载成功不代表功能实测通过。下载失败、空内容、Bash 语法错误会在执行前停止，第三方非零退出码会明确显示，但上游状态码可能误报，不能代替结果判读。预览模式不下载或执行缓存。
 
-所有测试均为第三方动态脚本：运行时下载、显示来源与 SHA-256，再经确认执行。性能测试会消耗 CPU、磁盘和大量流量，可能触发云厂商限速；生产业务高峰期不要运行。测试结果受时间、线路和上游服务策略影响。
+所有测试均为第三方动态脚本：运行时下载、显示来源、SHA-256 与脚本开头，再经确认执行。性能测试会消耗 CPU、磁盘和大量流量，可能触发云厂商限速；生产业务高峰期不要运行。测试结果受时间、线路和上游服务策略影响。
 
 ## 十四、LDNMP 建站
 

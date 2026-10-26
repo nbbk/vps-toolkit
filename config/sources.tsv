@@ -9,7 +9,6 @@ test-media	https://github.com/yeahwu/check/raw/main/check.sh	main	review-each-do
 test-besttrace	https://git.io/besttrace	upstream-current	review-each-download	-	test-besttrace.sh
 test-mtr	https://raw.githubusercontent.com/zhucaidan/mtr_trace/main/mtr_trace.sh	main	review-each-download	-	test-mtr.sh
 test-superspeed	https://git.io/superspeed_uxh	upstream-current	review-each-download	-	test-superspeed.sh
-test-nexttrace	https://nxtrace.org/nt	upstream-current	review-each-download	-	test-nexttrace.sh
 test-backtrace	https://raw.githubusercontent.com/ludashi2020/backtrace/main/install.sh	main	review-each-download	-	test-backtrace.sh
 test-netquality	https://Net.Check.Place	upstream-current	review-each-download	-	test-netquality.sh
 test-tcpquality	https://raw.githubusercontent.com/ibsgss/TcpQuality/main/runTcpQuality.sh	main	review-each-download	-	test-tcpquality.sh

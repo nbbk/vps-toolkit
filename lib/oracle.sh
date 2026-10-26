@@ -26,12 +26,19 @@ EOF
 }
 
 external_fetch() {
-  local url="$1" name="$2" dir="$STATE_DIR/external" file
-  mkdir -p "$dir" || return; chmod 700 "$dir" || return; file="$dir/$name"
+  local url="$1" name="$2" dir="$STATE_DIR/external" file tmp rc
+  # Never return an old cached script when a fresh download failed.
+  [ "$DRY_RUN" != 1 ] || { die "预览模式不下载或执行第三方脚本"; return 1; }
+  mkdir -p "$dir" && chmod 700 "$dir" || return 1
+  file="$dir/$name"
   command -v curl >/dev/null 2>&1 || pkg_install curl || return
-  run curl --fail --location --proto '=https' --tlsv1.2 -o "$file" "$url" >&2 || return
-  [ -s "$file" ] || { die "下载内容为空：$url"; return 1; }
-  chmod 600 "$file" || return
+  tmp="$(mktemp "$dir/.download.XXXXXX")" || return
+  if run curl --fail --location --proto '=https' --proto-redir '=https' --tlsv1.2 -o "$tmp" "$url" >&2; then
+    if [ ! -s "$tmp" ]; then rm -f -- "$tmp"; die "第三方脚本下载为空：$url"; return 1; fi
+  else
+    rc=$?; rm -f -- "$tmp"; return "$rc"
+  fi
+  chmod 600 "$tmp" && mv -f -- "$tmp" "$file" || { rm -f -- "$tmp"; return 1; }
   printf '来源: %s\nSHA-256: ' "$url" >&2
   sha256sum "$file" | tee -a "$LOG_FILE" >&2 || return
   printf '%s' "$file"
