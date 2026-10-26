@@ -3,7 +3,7 @@ set -Eeuo pipefail
 ROOT="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP="$(mktemp -d)"; trap 'rm -rf -- "$TMP"' EXIT
 export VMT_BASE_DIR="$ROOT" VMT_STATE_DIR="$TMP/state" VMT_LOG_FILE="$TMP/log"
-export VMT_ASSUME_YES=1
+export VMT_ASSUME_YES=1 VMT_DRY_RUN=0
 source "$ROOT/lib/core.sh"
 source "$ROOT/lib/oracle.sh"
 source "$ROOT/lib/extensions.sh"
@@ -58,7 +58,7 @@ sed -i 's/pinned-sha256\tbad-hash/review-each-download\t-/' "$TMP/sources.tsv"
 # shellcheck disable=SC2317
 confirm() { return 1; }
 output="$(testsuite_run local local 2>/dev/null)"
-! grep -q '^arg:' <<< "$output"
+if grep -q '^arg:' <<< "$output"; then exit 1; fi
 DRY_RUN=1
 output="$(testsuite_run local local 2>/dev/null)"
 [[ "$output" == *DRY-RUN* ]]
