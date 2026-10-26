@@ -10,7 +10,7 @@ oracle_menu() {
 3. DD 重装系统               4. R 探长（java_oci_manage）
 5. 开启 Root 密码登录        6. 关闭 Root 密码登录
 7. IPv6 内置诊断/恢复         8. JHB IPv6 恢复脚本
-9. 查看 OCI 元数据与网络     10. OCI Helper（oci-helper）
+9. 查看 OCI 元数据与网络
 0. 返回
 --------------------------------------------------------
 高风险第三方脚本会先下载到本地、显示来源和 SHA-256，再确认执行。
@@ -19,7 +19,7 @@ EOF
   case "$c" in
     1) oracle_keepalive_install;; 2) oracle_keepalive_remove;; 3) oracle_reinstall;;
     4) oracle_r_tanzhang;; 5) oracle_root_login_enable;; 6) oracle_root_login_disable;;
-    7) oracle_ipv6_repair;; 8) oracle_jhb_ipv6;; 9) oracle_metadata;; 10) oracle_oci_helper;; 0) break;; *) warn "无效选择";;
+    7) oracle_ipv6_repair;; 8) oracle_jhb_ipv6;; 9) oracle_metadata;; 0) break;; *) warn "无效选择";;
   esac
   submenu_pause
   done
@@ -71,12 +71,6 @@ oracle_r_tanzhang() {
   sed -n '1,120p' "$file"
   warn "R 探长会安装具有云账号与服务器管理能力的客户端。API 私钥和配置应只保存在你信任的机器上。"
   confirm "确认执行 semicons/java_oci_manage 官方安装器？" || return 0
-  chmod 700 "$file"; bash "$file"
-}
-
-oracle_oci_helper() {
-  local file; file="$(external_fetch_id oci-helper)" || return
-  sed -n '1,120p' "$file"; warn "这是 OCI Helper，不是 R 探长。"; confirm "确认执行 Yohann0617/oci-helper 安装器？" || return 0
   chmod 700 "$file"; bash "$file"
 }
 

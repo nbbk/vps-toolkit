@@ -1,5 +1,11 @@
 # 更新日志
 
+## 未发布
+
+- 移除仅输出提示却会准备 Docker 的 Discuz、Typecho 安装占位入口。
+- 移除 OCI Helper 旧安装入口：固定 Release 资产已被替换为 OCIworker 跳转脚本，与登记摘要不符；不绕过校验或自动信任新项目。
+- 保留其他菜单编号，补充无副作用的菜单分发和来源引用检查。具体证据及保留疑点见 [功能审计](docs/FEATURE_AUDIT.md)。
+
 ## 2.3.3
 
 - 兼容 Ubuntu 20.04 系统仓库提供的旧版 `python3-cryptography` API，并在常规 CI 中加入旧版验签回归测试。

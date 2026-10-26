@@ -22,7 +22,7 @@
 
 ### 第三方来源与更新通道
 
-`config/sources.tsv` 是唯一的第三方可执行来源登记表，`config/extensions.tsv` 管理扩展入口、风险等级和启停状态。重装脚本、R 探长和 OCI Helper 使用固定提交/Release 与 SHA-256；动态脚本标记为每次审阅。稳定更新通道只接受 GitHub 最新正式 Release 资产，先用 `config/release-signing-public.pem` 验证 SHA-256 清单的 Ed25519 签名，再验证源码包摘要；测试通道读取 `main`。正式版本变化记录在 `CHANGELOG.md`。
+`config/sources.tsv` 是唯一的第三方可执行来源登记表，`config/extensions.tsv` 管理扩展入口、风险等级和启停状态。重装脚本、R 探长 使用固定提交/Release 与 SHA-256；动态脚本标记为每次审阅。稳定更新通道只接受 GitHub 最新正式 Release 资产，先用 `config/release-signing-public.pem` 验证 SHA-256 清单的 Ed25519 签名，再验证源码包摘要；测试通道读取 `main`。正式版本变化记录在 `CHANGELOG.md`。
 
 ## 一、安装、启动与文件位置
 
@@ -275,7 +275,6 @@ Ubuntu 22.10 及更新版本可能由 systemd 的 `ssh.socket` 而不是 `sshd_c
 |---|---|---|
 | DD 重装 | `github.com/bin456789/reinstall` | 执行时下载、计算 SHA-256、显示前 100 行、确认后运行 |
 | R 探长 | `github.com/semicons/java_oci_manage` | 执行时下载官方 Release 的 `sh_client_bot.sh`、计算 SHA-256、显示前 120 行、确认后运行 |
-| OCI Helper | `github.com/Yohann0617/oci-helper` | 执行时下载最新 Release、计算 SHA-256、显示前 120 行、确认后运行 |
 | JHB IPv6 | `https://jhb.ovh/jb/v6.sh` | 执行时下载、计算 SHA-256、显示前 120 行、确认后运行 |
 
 采用这种方式是为了保留作者归属、避免未经许可证允许复制代码，并让用户明确知道实际执行内容来自哪里。SHA-256 只用于标识本次下载文件，不能证明第三方代码安全。如果不信任上游，请不要输入 `y`，并优先使用本仓库内置功能。
@@ -337,10 +336,6 @@ Ubuntu 22.10 及更新版本可能由 systemd 的 `ssh.socket` 而不是 `sshd_c
 ### 9. 查看 OCI 元数据与网络
 
 显示 IPv6 状态并查询 OCI 实例元数据服务。输出会尝试隐藏 SSH 公钥和用户数据等敏感字段。该功能只在 OCI 实例内有效。
-
-### 10. OCI Helper
-
-下载并运行 `Yohann0617/oci-helper` 的官方 Release 安装器。该项目此前被错误标记为“R 探长”，从 2.1.1 起已纠正名称并作为独立入口保留。
 
 ## 八、日志、更新与卸载
 
@@ -430,7 +425,6 @@ Ubuntu 22.10 及更新版本可能由 systemd 的 `ssh.socket` 而不是 `sshd_c
 - Vaultwarden：项目镜像，正式使用前必须配置 HTTPS 和管理令牌；
 - 静态站点：独立 Nginx 容器和可编辑 HTML 目录；
 - 反向代理：host 网络模式，适合代理本机服务；
-- Discuz/Typecho：因缺少统一维护的官方容器镜像，工具提示使用 LDNMP 后上传官方源码，不自动采用未知镜像；
 - 备份：打包 `/opt/vps-web` 文件；数据库仍应单独做逻辑导出；
 - 更新：遍历 Compose 项目拉取镜像并重建；
 - 卸载：停止 Compose 项目并删除站点目录，命名卷可能保留。

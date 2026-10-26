@@ -151,4 +151,4 @@ GitHub Actions 会在 Debian 12、Ubuntu 24.04、Rocky Linux 9、Alpine 3.20 容
 
 云厂商的安全列表/NSG 位于 VPS 外部，脚本只能修改机内防火墙。开放端口后仍需在 OCI 控制台同步放行。Docker 的“备份/迁移”高度依赖卷与 Compose 项目结构，本版本不做可能产生虚假安全感的自动恢复；建议直接备份 Compose 文件和命名卷数据。
 
-第三方来源记录在 `config/sources.tsv`。高风险重装、R 探长和 OCI Helper 固定到明确提交或 Release 并校验 SHA-256；无法稳定固定的测试、面板脚本标记为 `review-each-download`，每次都必须重新审阅和确认。
+第三方来源记录在 `config/sources.tsv`。高风险重装、R 探长 固定到明确提交或 Release 并校验 SHA-256；无法稳定固定的测试、面板脚本标记为 `review-each-download`，每次都必须重新审阅和确认。

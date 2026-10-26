@@ -7,8 +7,7 @@ web_menu() {
   ui_header "LDNMP 建站"
   cat <<'EOF'
   1. 安装 LDNMP 环境        2. 安装 WordPress
-  3. 安装 Discuz            4. 安装 Halo
-  5. 安装 Typecho           6. 安装 Bitwarden/Vaultwarden
+  4. 安装 Halo              6. 安装 Bitwarden/Vaultwarden
   7. 安装静态网站           8. 新增反向代理
  9. 查看站点与容器        10. 备份全部站点
  11. 恢复站点备份          12. 更新 LDNMP 镜像
@@ -19,8 +18,8 @@ EOF
   ui_line
   local c; read -r -p "请选择: " c
   case "$c" in
-    1) web_install_ldnmp;; 2) web_install_wordpress;; 3) web_install_discuz;; 4) web_install_halo;;
-    5) web_install_typecho;; 6) web_install_vaultwarden;; 7) web_static;; 8) web_proxy;;
+    1) web_install_ldnmp;; 2) web_install_wordpress;; 4) web_install_halo;;
+    6) web_install_vaultwarden;; 7) web_static;; 8) web_proxy;;
     9) web_status;; 10) web_backup;; 11) web_restore;; 12) web_update;; 13) web_optimize;; 14) web_uninstall;;
     15) web_install_panel bt;; 16) web_install_panel aapanel;; 0) break;; *) warn "无效选择";;
   esac
@@ -77,11 +76,9 @@ web_install_wordpress() { web_prepare || return; local name pass root; read -r -
   db: {image: mariadb:11, restart: unless-stopped, environment: {MARIADB_DATABASE: wordpress, MARIADB_USER: wordpress, MARIADB_PASSWORD: '$pass', MARIADB_ROOT_PASSWORD: '$root'}, volumes: [db:/var/lib/mysql]}
   app: {image: wordpress:php8.3-apache, restart: unless-stopped, ports: ['8080:80'], environment: {WORDPRESS_DB_HOST: db, WORDPRESS_DB_USER: wordpress, WORDPRESS_DB_PASSWORD: '$pass', WORDPRESS_DB_NAME: wordpress}, volumes: [wp:/var/www/html], depends_on: [db]}
 volumes: {db: {}, wp: {}}"; ok "WordPress 已启动：http://服务器IP:8080"; }
-web_install_discuz() { web_prepare || return; warn "Discuz 官方没有统一维护的 Compose 镜像；为避免使用未知镜像，本版本暂不自动部署。可先安装 LDNMP 后上传官方源码。"; }
 web_install_halo() { web_prepare || return; web_app_compose halo "services:
   halo: {image: halohub/halo:2, restart: unless-stopped, ports: ['8090:8090'], command: ['--spring.r2dbc.url=r2dbc:pool:h2:file:///root/.halo2/db/halo-next?MODE=MYSQL&DB_CLOSE_ON_EXIT=FALSE'], volumes: [halo:/root/.halo2]}
 volumes: {halo: {}}"; ok "Halo：http://服务器IP:8090"; }
-web_install_typecho() { web_prepare || return; warn "Typecho 建议使用 LDNMP 环境并从官网上传源码；本工具不采用来源不明的第三方镜像。"; }
 web_install_vaultwarden() { web_prepare || return; web_app_compose vaultwarden "services:
   app: {image: vaultwarden/server:latest, restart: unless-stopped, ports: ['8088:80'], volumes: [data:/data]}
 volumes: {data: {}}"; warn "Vaultwarden 已启动在 8088；投入使用前必须配置 HTTPS 和管理员令牌。"; }
