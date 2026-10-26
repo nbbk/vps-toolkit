@@ -27,10 +27,13 @@ EOF
 
 external_fetch() {
   local url="$1" name="$2" dir="$STATE_DIR/external" file
-  mkdir -p "$dir"; chmod 700 "$dir"; file="$dir/$name"
-  command -v curl >/dev/null 2>&1 || pkg_install curl
-  run curl --fail --location --proto '=https' --tlsv1.2 -o "$file" "$url" >&2
-  chmod 600 "$file"; printf '来源: %s\nSHA-256: ' "$url" >&2; sha256sum "$file" | tee -a "$LOG_FILE" >&2
+  mkdir -p "$dir" || return; chmod 700 "$dir" || return; file="$dir/$name"
+  command -v curl >/dev/null 2>&1 || pkg_install curl || return
+  run curl --fail --location --proto '=https' --tlsv1.2 -o "$file" "$url" >&2 || return
+  [ -s "$file" ] || { die "下载内容为空：$url"; return 1; }
+  chmod 600 "$file" || return
+  printf '来源: %s\nSHA-256: ' "$url" >&2
+  sha256sum "$file" | tee -a "$LOG_FILE" >&2 || return
   printf '%s' "$file"
 }
 

@@ -4,7 +4,6 @@ r-tanzhang	https://github.com/semicons/java_oci_manage/releases/download/v10.5.1
 jhb-ipv6	https://jhb.ovh/jb/v6.sh	upstream-current	review-each-download	-	jhb-ipv6.sh
 bt-panel	https://download.bt.cn/install/install_panel.sh	upstream-current	review-each-download	-	bt-panel.sh
 aapanel	https://www.aapanel.com/script/install_7.0_en.sh	7.0	review-each-download	-	aapanel.sh
-test-chatgpt	https://cdn.jsdelivr.net/gh/missuo/OpenAI-Checker/openai.sh	upstream-current	review-each-download	-	test-chatgpt.sh
 test-region	https://check.unlock.media	upstream-current	review-each-download	-	test-region.sh
 test-media	https://github.com/yeahwu/check/raw/main/check.sh	main	review-each-download	-	test-media.sh
 test-besttrace	https://git.io/besttrace	upstream-current	review-each-download	-	test-besttrace.sh

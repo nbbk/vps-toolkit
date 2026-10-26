@@ -61,6 +61,19 @@ basics_valid_package docker-compose-plugin; if basics_valid_package 'curl | sh';
 0')"
   [[ "$output" == *invalid:* && "$output" != *unexpected:* && "$output" != *'OCI Helper'* ]] || exit 1
   [ -z "$(source_manifest_lookup oci-helper)" ]
+  [ -z "$(source_manifest_lookup test-chatgpt)" ]
+  testsuite_run() { printf 'test-call:%s\n' "$*"; }
+  output="$(testsuite_menu <<<'1
+0')"
+  [[ "$output" == *invalid:* && "$output" != *test-call:* && "$output" != *ChatGPT* ]] || exit 1
+  test_actions='2:region:test-region 3:media:test-media 11:besttrace:test-besttrace 12:mtr:test-mtr 13:superspeed:test-superspeed 14:nexttrace:test-nexttrace 16:backtrace:test-backtrace 18:netquality:test-netquality 19:tcpquality:test-tcpquality 21:yabs:test-yabs 22:gb5:test-gb5 31:bench:test-bench 32:ecs:test-ecs 33:nodequality:test-nodequality'
+  for entry in $test_actions; do
+    IFS=: read -r selection action source_id <<<"$entry"
+    expected="test-call:$action $source_id"
+    [ "$selection" != 21 ] || expected+=' -i -5'
+    output="$(testsuite_menu <<<"$selection"$'\n0')"
+    grep -Fxq "$expected" <<<"$output" || { echo "wrong test dispatch: $entry" >&2; exit 1; }
+  done
 
   # Fixed, local mappings: mock every retained action and verify its old number.
   web_actions='1:web_install_ldnmp 2:web_install_wordpress 4:web_install_halo 6:web_install_vaultwarden 7:web_static 8:web_proxy 9:web_status 10:web_backup 11:web_restore 12:web_update 13:web_optimize 14:web_uninstall 15:web_install_panel:bt 16:web_install_panel:aapanel'
