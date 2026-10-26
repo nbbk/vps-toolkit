@@ -39,6 +39,8 @@ workspace_valid_name workspace-1; if workspace_valid_name 'bad;id'; then exit 1;
 web_valid_name wordpress; if web_valid_name '../site'; then exit 1; fi
 basics_valid_package docker-compose-plugin; if basics_valid_package 'curl | sh'; then exit 1; fi
 # Exercise affected menus without installing anything or contacting upstreams.
+# These overrides are called indirectly by the sourced menu functions.
+# shellcheck disable=SC2317
 (
   ui_header() { :; }
   clear_screen() { :; }
