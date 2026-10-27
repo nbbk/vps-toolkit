@@ -55,4 +55,61 @@ baseline_create >/dev/null
 [ ! -e "$VMT_STATE_DIR/baseline/current.txt" ]
 managed_backup_export "$TMP/dry-run.tar.gz" >/dev/null
 [ ! -e "$TMP/dry-run.tar.gz" ]
+# Download/runner regressions use only local fixtures, never upstream code.
+# The curl and confirmation overrides are called indirectly by sourced helpers.
+# shellcheck disable=SC2317
+(
+  export VMT_STATE_DIR="$TMP/external-state"
+  STATE_DIR="$VMT_STATE_DIR"; DRY_RUN=0
+  mkdir -p "$STATE_DIR/external"
+  SOURCE_MANIFEST="$TMP/test-sources.tsv"
+  fixture="$TMP/script-fixture.sh"
+  printf 'test-fixture\thttps://example.invalid/test.sh\ttest\treview-each-download\t-\ttest.sh\n' >"$SOURCE_MANIFEST"
+  curl_mode=success
+  curl() {
+    [ "$curl_mode" != failure ] || return 28
+    local destination=''
+    while [ "$#" -gt 0 ]; do
+      if [ "$1" = -o ]; then destination="$2"; shift 2; else shift; fi
+    done
+    [ -n "$destination" ] || return 2
+    cp "$fixture" "$destination"
+  }
+  confirm() { touch "$STATE_DIR/confirmed"; }
+  cat >"$fixture" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$@" >"$VMT_STATE_DIR/executed"
+EOF
+  cp "$fixture" "$STATE_DIR/external/test.sh"
+  curl_mode=failure
+  if testsuite_run fixture test-fixture >"$TMP/download-failure.log" 2>&1; then exit 1; else [ "$?" = 28 ]; fi
+  [ ! -e "$STATE_DIR/executed" ] && [ ! -e "$STATE_DIR/confirmed" ]
+
+  curl_mode=success
+  : >"$fixture"
+  if testsuite_run fixture test-fixture >"$TMP/empty.log" 2>&1; then exit 1; fi
+  [ ! -e "$STATE_DIR/confirmed" ]
+  printf '#!/usr/bin/env bash\nif\n' >"$fixture"
+  if testsuite_run fixture test-fixture >"$TMP/syntax.log" 2>&1; then exit 1; fi
+  [ ! -e "$STATE_DIR/confirmed" ]
+
+  printf '#!/usr/bin/env bash\nexit 42\n' >"$fixture"
+  if testsuite_run fixture test-fixture >"$TMP/exit-status.log" 2>&1; then exit 1; else [ "$?" = 42 ]; fi
+  grep -q '退出码 42' "$TMP/exit-status.log"
+  rm "$STATE_DIR/confirmed"
+  printf 'test-fixture\thttps://example.invalid/test.sh\ttest\tpinned-sha256\tincorrect\ttest.sh\n' >"$SOURCE_MANIFEST"
+  if testsuite_run fixture test-fixture >"$TMP/digest.log" 2>&1; then exit 1; fi
+  [ ! -e "$STATE_DIR/confirmed" ]
+
+  cat >"$fixture" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$@" >"$VMT_STATE_DIR/executed"
+EOF
+  digest="$(sha256sum "$fixture" | awk '{print $1}')"
+  printf 'test-fixture\thttps://example.invalid/test.sh\ttest\tpinned-sha256\t%s\ttest.sh\n' "$digest" >"$SOURCE_MANIFEST"
+  testsuite_run fixture test-fixture -i -5 'argument with spaces' >/dev/null 2>&1
+  printf '%s\n' -i -5 'argument with spaces' >"$TMP/expected-arguments"
+  cmp "$TMP/expected-arguments" "$STATE_DIR/executed"
+)
+
 echo 'safety-contract: PASS'

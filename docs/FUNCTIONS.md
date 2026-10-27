@@ -22,7 +22,7 @@
 
 ### 第三方来源与更新通道
 
-`config/sources.tsv` 是唯一的第三方可执行来源登记表，`config/extensions.tsv` 管理扩展入口、风险等级和启停状态。重装脚本、R 探长和 OCI Helper 使用固定提交/Release 与 SHA-256；动态脚本标记为每次审阅。稳定更新通道只接受 GitHub 最新正式 Release 资产，先用 `config/release-signing-public.pem` 验证 SHA-256 清单的 Ed25519 签名，再验证源码包摘要；测试通道读取 `main`。正式版本变化记录在 `CHANGELOG.md`。
+`config/sources.tsv` 是唯一的第三方可执行来源登记表，`config/extensions.tsv` 管理扩展入口、风险等级和启停状态。重装脚本、R 探长 使用固定提交/Release 与 SHA-256；动态脚本标记为每次审阅。稳定更新通道只接受 GitHub 最新正式 Release 资产，先用 `config/release-signing-public.pem` 验证 SHA-256 清单的 Ed25519 签名，再验证源码包摘要；测试通道读取 `main`。正式版本变化记录在 `CHANGELOG.md`。
 
 ## 一、安装、启动与文件位置
 
@@ -275,7 +275,6 @@ Ubuntu 22.10 及更新版本可能由 systemd 的 `ssh.socket` 而不是 `sshd_c
 |---|---|---|
 | DD 重装 | `github.com/bin456789/reinstall` | 执行时下载、计算 SHA-256、显示前 100 行、确认后运行 |
 | R 探长 | `github.com/semicons/java_oci_manage` | 执行时下载官方 Release 的 `sh_client_bot.sh`、计算 SHA-256、显示前 120 行、确认后运行 |
-| OCI Helper | `github.com/Yohann0617/oci-helper` | 执行时下载最新 Release、计算 SHA-256、显示前 120 行、确认后运行 |
 | JHB IPv6 | `https://jhb.ovh/jb/v6.sh` | 执行时下载、计算 SHA-256、显示前 120 行、确认后运行 |
 
 采用这种方式是为了保留作者归属、避免未经许可证允许复制代码，并让用户明确知道实际执行内容来自哪里。SHA-256 只用于标识本次下载文件，不能证明第三方代码安全。如果不信任上游，请不要输入 `y`，并优先使用本仓库内置功能。
@@ -337,10 +336,6 @@ Ubuntu 22.10 及更新版本可能由 systemd 的 `ssh.socket` 而不是 `sshd_c
 ### 9. 查看 OCI 元数据与网络
 
 显示 IPv6 状态并查询 OCI 实例元数据服务。输出会尝试隐藏 SSH 公钥和用户数据等敏感字段。该功能只在 OCI 实例内有效。
-
-### 10. OCI Helper
-
-下载并运行 `Yohann0617/oci-helper` 的官方 Release 安装器。该项目此前被错误标记为“R 探长”，从 2.1.1 起已纠正名称并作为独立入口保留。
 
 ## 八、日志、更新与卸载
 
@@ -416,9 +411,11 @@ Ubuntu 22.10 及更新版本可能由 systemd 的 `ssh.socket` 而不是 `sshd_c
 
 ## 十三、测试脚本合集
 
-测试菜单包括 ChatGPT/流媒体解锁、BestTrace、MTR、SuperSpeed、NextTrace、BackTrace、NetQuality、TCPQuality、YABS、Geekbench 5、Bench、ECS 融合怪和 NodeQuality。
+测试菜单包括 Region/yeahwu 流媒体解锁、多目标 NextTrace 路由、MTR、SuperSpeed、BackTrace、NetQuality、TCPQuality、YABS、Geekbench 5、Bench、ECS 融合怪和 NodeQuality。移除原 14 号仅安装、不执行路由测试的 NextTrace 安装器入口；保留原 11 号多目标 NextTrace 测试。YABS 保留 `-i -5` 参数，即跳过 iperf 并使用 Geekbench 5。
 
-所有测试均为第三方动态脚本：运行时下载、显示来源与 SHA-256，再经确认执行。性能测试会消耗 CPU、磁盘和大量流量，可能触发云厂商限速；生产业务高峰期不要运行。测试结果受时间、线路和上游服务策略影响。
+独立 ChatGPT 检测因可将 HTTP 403 错判为支持访问而移除。保留脚本仍存在上游接口、架构或依赖限制，详见 [逐项审计与验证边界](FEATURE_AUDIT.md)；下载成功不代表功能实测通过。下载失败、空内容、Bash 语法错误会在执行前停止，第三方非零退出码会明确显示，但上游状态码可能误报，不能代替结果判读。预览模式不下载或执行缓存。
+
+所有测试均为第三方动态脚本：运行时下载、显示来源、SHA-256 与脚本开头，再经确认执行。性能测试会消耗 CPU、磁盘和大量流量，可能触发云厂商限速；生产业务高峰期不要运行。测试结果受时间、线路和上游服务策略影响。
 
 ## 十四、LDNMP 建站
 
@@ -430,7 +427,6 @@ Ubuntu 22.10 及更新版本可能由 systemd 的 `ssh.socket` 而不是 `sshd_c
 - Vaultwarden：项目镜像，正式使用前必须配置 HTTPS 和管理令牌；
 - 静态站点：独立 Nginx 容器和可编辑 HTML 目录；
 - 反向代理：host 网络模式，适合代理本机服务；
-- Discuz/Typecho：因缺少统一维护的官方容器镜像，工具提示使用 LDNMP 后上传官方源码，不自动采用未知镜像；
 - 备份：打包 `/opt/vps-web` 文件；数据库仍应单独做逻辑导出；
 - 更新：遍历 Compose 项目拉取镜像并重建；
 - 卸载：停止 Compose 项目并删除站点目录，命名卷可能保留。

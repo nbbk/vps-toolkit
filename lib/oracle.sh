@@ -10,7 +10,7 @@ oracle_menu() {
 3. DD 重装系统               4. R 探长（java_oci_manage）
 5. 开启 Root 密码登录        6. 关闭 Root 密码登录
 7. IPv6 内置诊断/恢复         8. JHB IPv6 恢复脚本
-9. 查看 OCI 元数据与网络     10. OCI Helper（oci-helper）
+9. 查看 OCI 元数据与网络
 0. 返回
 --------------------------------------------------------
 高风险第三方脚本会先下载到本地、显示来源和 SHA-256，再确认执行。
@@ -19,18 +19,28 @@ EOF
   case "$c" in
     1) oracle_keepalive_install;; 2) oracle_keepalive_remove;; 3) oracle_reinstall;;
     4) oracle_r_tanzhang;; 5) oracle_root_login_enable;; 6) oracle_root_login_disable;;
-    7) oracle_ipv6_repair;; 8) oracle_jhb_ipv6;; 9) oracle_metadata;; 10) oracle_oci_helper;; 0) break;; *) warn "无效选择";;
+    7) oracle_ipv6_repair;; 8) oracle_jhb_ipv6;; 9) oracle_metadata;; 0) break;; *) warn "无效选择";;
   esac
   submenu_pause
   done
 }
 
 external_fetch() {
-  local url="$1" name="$2" dir="$STATE_DIR/external" file
-  mkdir -p "$dir"; chmod 700 "$dir"; file="$dir/$name"
-  command -v curl >/dev/null 2>&1 || pkg_install curl
-  run curl --fail --location --proto '=https' --tlsv1.2 -o "$file" "$url" >&2
-  chmod 600 "$file"; printf '来源: %s\nSHA-256: ' "$url" >&2; sha256sum "$file" | tee -a "$LOG_FILE" >&2
+  local url="$1" name="$2" dir="$STATE_DIR/external" file tmp rc
+  # Never return an old cached script when a fresh download failed.
+  [ "$DRY_RUN" != 1 ] || { die "预览模式不下载或执行第三方脚本"; return 1; }
+  mkdir -p "$dir" && chmod 700 "$dir" || return 1
+  file="$dir/$name"
+  command -v curl >/dev/null 2>&1 || pkg_install curl || return
+  tmp="$(mktemp "$dir/.download.XXXXXX")" || return
+  if run curl --fail --location --proto '=https' --proto-redir '=https' --tlsv1.2 -o "$tmp" "$url" >&2; then
+    if [ ! -s "$tmp" ]; then rm -f -- "$tmp"; die "第三方脚本下载为空：$url"; return 1; fi
+  else
+    rc=$?; rm -f -- "$tmp"; return "$rc"
+  fi
+  chmod 600 "$tmp" && mv -f -- "$tmp" "$file" || { rm -f -- "$tmp"; return 1; }
+  printf '来源: %s\nSHA-256: ' "$url" >&2
+  sha256sum "$file" | tee -a "$LOG_FILE" >&2 || return
   printf '%s' "$file"
 }
 
@@ -71,12 +81,6 @@ oracle_r_tanzhang() {
   sed -n '1,120p' "$file"
   warn "R 探长会安装具有云账号与服务器管理能力的客户端。API 私钥和配置应只保存在你信任的机器上。"
   confirm "确认执行 semicons/java_oci_manage 官方安装器？" || return 0
-  chmod 700 "$file"; bash "$file"
-}
-
-oracle_oci_helper() {
-  local file; file="$(external_fetch_id oci-helper)" || return
-  sed -n '1,120p' "$file"; warn "这是 OCI Helper，不是 R 探长。"; confirm "确认执行 Yohann0617/oci-helper 安装器？" || return 0
   chmod 700 "$file"; bash "$file"
 }
 
