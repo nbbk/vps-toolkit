@@ -4,7 +4,7 @@ ROOT="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP="$(mktemp -d)"; trap 'rm -rf -- "$TMP"' EXIT
 export VMT_BASE_DIR="$ROOT" VMT_STATE_DIR="$TMP/state" VMT_BACKUP_DIR="$TMP/legacy" VMT_MANAGED_BACKUP_DIR="$TMP/state/managed-backups"
 export VMT_LOG_FILE="$TMP/toolkit.log" VMT_LOCK_DIR="$TMP/locks" VMT_ASSUME_YES=1
-export TOOL_VERSION=2.3.3; mkdir -p "$VMT_STATE_DIR"; touch "$VMT_LOG_FILE"
+export TOOL_VERSION=2.3.4; mkdir -p "$VMT_STATE_DIR"; touch "$VMT_LOG_FILE"
 for module in core system firewall ssh docker oracle tools reinstall testsuite web basics workspace backup diagnostics security extensions baseline cli; do source "$ROOT/lib/$module.sh"; done
 
 output="$(cli_dispatch --dry-run firewall open 54321 tcp)"
