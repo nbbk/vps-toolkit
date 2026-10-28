@@ -45,6 +45,16 @@ curl -fsSL https://raw.githubusercontent.com/nbbk/vps-toolkit/main/bootstrap.sh 
 sudo nb
 ```
 
+### 直接测试短命令（main / 尚未随稳定版发布）
+
+```bash
+sudo nb nq
+```
+
+进入 NB NodeQuality 交互测试选项，默认只保存本地报告、不上传，不需要部署 CF/Docker 网站。需要包含此功能的新工具箱 main/testing 源码；**当前稳定版 2.3.4 没有 `nq` 子命令**。使用稳定版时请先按下方说明审阅并切换 testing，或在 NodeQuality 项目目录执行 `sudo bash NodeQuality.sh`。
+
+`sudo nb nq -E -4` 可透传测试参数；`sudo nb --dry-run nq` 仅预览，不下载/执行。入口仍校验固定提交与 SHA-256、显示脚本并确认；禁用 tests 扩展时拒绝运行。测试需要 root，会产生负载和网络流量，尚未完成真实 VPS 全流程验证。
+
 常用非交互命令：
 
 ```bash

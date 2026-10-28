@@ -3,6 +3,7 @@
 cli_usage() {
   cat <<'EOF'
 用法：nb [--dry-run] <命令> [参数]
+  nq [测试参数]                NB NodeQuality（默认本地报告，保留运行确认）
   info                         系统信息
   doctor                       兼容性诊断
   security                     安全体检（只读）
@@ -29,6 +30,7 @@ cli_dispatch() {
   # shellcheck disable=SC2034
   if [ "$cmd" = --dry-run ]; then DRY_RUN=1; export VMT_DRY_RUN=1; cmd="${1:-}"; shift || true; fi
   case "$cmd" in
+    nq) extension_enabled tests || { die "扩展 tests 已禁用"; return 1; }; testsuite_run nodequality test-nodequality "$@";;
     info) system_info;; doctor) compatibility_report;; security) security_audit;; report) diagnostic_report_create "${1:-}";;
     version|--version|-v) echo "$TOOL_VERSION";; help|--help|-h) cli_usage;;
     firewall) case "${1:-}" in

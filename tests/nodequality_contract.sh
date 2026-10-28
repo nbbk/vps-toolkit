@@ -8,6 +8,26 @@ source "$ROOT/lib/core.sh"
 source "$ROOT/lib/oracle.sh"
 source "$ROOT/lib/extensions.sh"
 source "$ROOT/lib/testsuite.sh"
+source "$ROOT/lib/cli.sh"
+# CLI alias must not append upload/default options and preserves argument boundaries.
+# shellcheck disable=SC2317
+(
+  testsuite_run() { printf 'argc:%s\n' "$#"; printf 'arg:<%s>\n' "$@"; }
+  output="$(cli_dispatch nq)"
+  [[ "$output" == $'argc:2\narg:<nodequality>\narg:<test-nodequality>' ]]
+  output="$(cli_dispatch nq -E -D 'two words')"
+  [[ "$output" == $'argc:5\narg:<nodequality>\narg:<test-nodequality>\narg:<-E>\narg:<-D>\narg:<two words>' ]]
+  testsuite_run() { return 42; }
+  if cli_dispatch nq; then exit 1; else [ "$?" = 42 ]; fi
+  extension_enabled() { return 1; }
+  testsuite_run() { echo 'disabled extension unexpectedly reached launcher'; exit 99; }
+  if cli_dispatch nq >/dev/null 2>&1; then exit 1; else [ "$?" = 1 ]; fi
+)
+# Top-level CLI still gates non-help commands on root before any download.
+if [ "$EUID" -ne 0 ]; then
+  if bash "$ROOT/vps-tool.sh" nq > "$TMP/root-check" 2>&1; then exit 1; fi
+  grep -q '请使用 root' "$TMP/root-check"
+fi
 mkdir -p "$TMP/bin"
 export MOCK_TRACE="$TMP/fetches" MOCK_SCRIPT="$TMP/mock.sh"
 printf '#!/usr/bin/env bash\nprintf "mock-nodequality:<%%s>\\n" "$@"\n' > "$MOCK_SCRIPT"
@@ -27,7 +47,7 @@ nodequality_source_ready
 # An unconfigured/pending row must fail before invoking transport.
 SOURCE_MANIFEST="$TMP/sources.tsv"
 printf 'test-nodequality\t-\tpending-publication\tpending-release\t-\ttest-nodequality.sh\n' > "$SOURCE_MANIFEST"
-if testsuite_run nodequality test-nodequality > "$TMP/out" 2>&1; then exit 1; fi
+if cli_dispatch nq > "$TMP/out" 2>&1; then exit 1; fi
 [ ! -e "$MOCK_TRACE" ]
 grep -q '不会下载' "$TMP/out"
 SOURCE_MANIFEST="$TMP/sources.tsv"
@@ -47,23 +67,22 @@ for mode in dynamic wrong-repository short-ref missing-hash; do
     missing-hash) digest=-;;
   esac
   write_row "$url" "$version" "$policy" "$digest"
-  if testsuite_run nodequality test-nodequality > "$TMP/out" 2>&1; then exit 1; fi
+  if cli_dispatch nq > "$TMP/out" 2>&1; then exit 1; fi
   [ ! -e "$MOCK_TRACE" ]
 done
 url="https://raw.githubusercontent.com/nbbk/NodeQuality/$ref/NodeQuality.sh"
 write_row "$url" "$ref" pinned-sha256 "$(printf '%064d' 0)"
-if testsuite_run nodequality test-nodequality > "$TMP/out" 2>&1; then exit 1; fi
+if cli_dispatch nq > "$TMP/out" 2>&1; then exit 1; fi
 grep -q '校验失败' "$TMP/out"
 write_row "$url" "$ref" pinned-sha256 "$sha"
-output="$(testsuite_run nodequality test-nodequality 'two words' 2>/dev/null)"
+output="$(cli_dispatch nq 'two words' 2>/dev/null)"
 grep -Fxq 'mock-nodequality:<two words>' <<< "$output"
 # shellcheck disable=SC2317
 confirm() { return 1; }
-output="$(testsuite_run nodequality test-nodequality 2>/dev/null)"
+output="$(cli_dispatch nq 2>/dev/null)"
 if grep -q '^mock-nodequality:' <<< "$output"; then exit 1; fi
-DRY_RUN=1
 rm "$MOCK_TRACE"
-output="$(testsuite_run nodequality test-nodequality 2>/dev/null)"
+output="$(cli_dispatch --dry-run nq 2>/dev/null)"
 [[ "$output" == *DRY-RUN* ]]
 [ ! -e "$MOCK_TRACE" ]
 echo 'nodequality-contract: PASS (mock only)'
