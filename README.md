@@ -2,13 +2,13 @@
 
 一个面向自用 VPS 的交互式 Bash 工具，参考了 `kejilion/sh` 的功能分类，但重新实现为小型模块化代码。脚本不含遥测、不保存密码，也不默认执行网上下载的脚本。
 
-当前版本：`2.3.4`
+当前版本：`2.3.5`
 
 > 📖 **完整功能说明：** [查看各模块、每个菜单功能、适用场景、风险与回滚方式](docs/FUNCTIONS.md)
 
 主菜单分为核心管理与扩展中心。核心包括系统、网络、防火墙、BBR、Swap、Docker、SSH、备份、兼容性诊断和安全体检；甲骨文云、测试、建站、面板和重装系统统一放在第三方扩展中心。
 
-## 2.3.4 重点能力
+## 2.3.5 重点能力
 
 - BBR 组合管理：独立显示并切换拥塞控制与默认队列算法，内置 `BBR + fq`、`BBR + fq_codel`、`CUBIC + fq_codel`、`CUBIC + fq`，并支持从内核实际可用列表选择拥塞算法。
 - 主菜单仪表盘与功能搜索：快速显示内存、磁盘、SSH、BBR、Docker 和告警摘要，并可按关键词找功能。
@@ -45,13 +45,13 @@ curl -fsSL https://raw.githubusercontent.com/nbbk/vps-toolkit/main/bootstrap.sh 
 sudo nb
 ```
 
-### 直接测试短命令（main / 尚未随稳定版发布）
+### 直接测试短命令（v2.3.5 起）
 
 ```bash
 sudo nb nq
 ```
 
-进入 NB NodeQuality 交互测试选项，默认只保存本地报告、不上传，不需要部署 CF/Docker 网站。需要包含此功能的新工具箱 main/testing 源码；**当前稳定版 2.3.4 没有 `nq` 子命令**。使用稳定版时请先按下方说明审阅并切换 testing，或在 NodeQuality 项目目录执行 `sudo bash NodeQuality.sh`。
+进入 NB NodeQuality 交互测试选项，默认只保存本地报告、不上传，不需要部署 CF/Docker 网站。从稳定版 **v2.3.5** 起支持 `nq` 子命令。旧版用户先运行 `sudo nb update stable`，更新后再运行 `sudo nb nq`；无需切换 testing。
 
 `sudo nb nq -E -4` 可透传测试参数；`sudo nb --dry-run nq` 仅预览，不下载/执行。入口仍校验固定提交与 SHA-256、显示脚本并确认；禁用 tests 扩展时拒绝运行。测试需要 root，会产生负载和网络流量，尚未完成真实 VPS 全流程验证。
 

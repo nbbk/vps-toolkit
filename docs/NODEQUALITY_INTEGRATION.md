@@ -5,7 +5,7 @@
 保留原项目 [LloydAsp/NodeQuality](https://github.com/LloydAsp/NodeQuality)
 的来源与 AGPL 许可证；具体修改说明和依赖验证记录见新仓库。
 
-## 短命令（main / 尚未发布到稳定版）
+## 短命令（稳定版 v2.3.5 起）
 
 ```bash
 sudo nb nq
@@ -13,7 +13,7 @@ sudo nb nq -E -4
 sudo nb --dry-run nq
 ```
 
-`nq` 复用菜单33启动器，透传参数；不附加上传选项，保留固定来源/摘要、脚本审阅确认、退出码和 dry-run。已禁用 tests 扩展时同样拒绝运行。需要包含该功能的新 main/testing 源码；稳定版2.3.4尚不支持，不能把主分支合并等同于已发布新版本。无需部署报告网站。
+`nq` 复用菜单33启动器，透传参数；不附加上传选项，保留固定来源/摘要、脚本审阅确认、退出码和 dry-run。已禁用 tests 扩展时同样拒绝运行。稳定版 v2.3.5 起包含该功能；v2.3.4 及更早版本先运行 `sudo nb update stable`。无需部署报告网站。
 
 ## 默认行为与边界
 
