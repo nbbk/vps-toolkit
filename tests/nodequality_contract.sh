@@ -60,7 +60,7 @@ grep -Fxq 'mock-nodequality:<two words>' <<< "$output"
 # shellcheck disable=SC2317
 confirm() { return 1; }
 output="$(testsuite_run nodequality test-nodequality 2>/dev/null)"
-! grep -q '^mock-nodequality:' <<< "$output"
+if grep -q '^mock-nodequality:' <<< "$output"; then exit 1; fi
 DRY_RUN=1
 rm "$MOCK_TRACE"
 output="$(testsuite_run nodequality test-nodequality 2>/dev/null)"
