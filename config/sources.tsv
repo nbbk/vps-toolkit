@@ -16,4 +16,4 @@ test-yabs	https://yabs.sh	upstream-current	review-each-download	-	test-yabs.sh
 test-gb5	https://raw.githubusercontent.com/i-abc/GB5/main/gb5-test.sh	main	review-each-download	-	test-gb5.sh
 test-bench	https://bench.sh	upstream-current	review-each-download	-	test-bench.sh
 test-ecs	https://github.com/spiritLHLS/ecs/raw/main/ecs.sh	main	review-each-download	-	test-ecs.sh
-test-nodequality	https://run.NodeQuality.com	upstream-current	review-each-download	-	test-nodequality.sh
+test-nodequality	https://raw.githubusercontent.com/nbbk/NodeQuality/d0a6f6d52002a5aa23ce10f86c69843f76d62dd6/NodeQuality.sh	d0a6f6d52002a5aa23ce10f86c69843f76d62dd6	pinned-sha256	6e8ea28e029f91c1718fd9a06877aae016ee7f61d27239f0ffd7092bbe9f5ab5	test-nodequality.sh
